@@ -109,7 +109,7 @@ class ConfirmApply(discord.ui.View):
                         for each in self.list_users:
                             # Check if user can kick/ban, skip
                             try:
-                                check_perm = await self.utils.user_can_kick_ban(interaction.guild, each)
+                                check_perm = await self.utils.get_user_perms(interaction.guild, each)
                                 if check_perm is not None and \
                                     (check_perm['kick_members'] is True or check_perm['ban_members'] is True):
                                     continue
@@ -195,10 +195,9 @@ class Commanding(commands.Cog):
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
 
-    ignore_group = app_commands.Group(name="ignore", description="Ignore role or name.")
+    ignore_group = app_commands.Group(name="ignore", guild_only=True, description="Ignore role or name.")
 
     @checks.has_permissions(manage_channels=True)
-    @app_commands.guild_only()
     @ignore_group.command(
         name="list",
         description="List ignored users and roles from namefilter."
@@ -210,7 +209,19 @@ class Commanding(commands.Cog):
         """ /ignore list """
         """ This is private """
         try:
-            await interaction.response.send_message(f"{interaction.user.mention} namefilter loading...", ephemeral=True)                
+            await interaction.response.send_message(f"{interaction.user.mention} namefilter loading...", ephemeral=True)
+            # re-check perm
+            try:
+                is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
+                if is_mod is False:
+                    await interaction.edit_original_response(
+                        content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                    )
+                    return
+            except Exception as e:
+                traceback.print_exc(file=sys.stdout)
+            # end of re-check perm
+
             if str(interaction.guild.id) not in self.bot.log_channel_guild or \
                 self.bot.log_channel_guild[str(interaction.guild.id)] is None:
                 await interaction.edit_original_response(
@@ -271,7 +282,6 @@ class Commanding(commands.Cog):
 
 
     @checks.has_permissions(manage_channels=True)
-    @app_commands.guild_only()
     @ignore_group.command(
         name="adduser",
         description="Add a user to ignore list of namefilter."
@@ -285,6 +295,18 @@ class Commanding(commands.Cog):
         """ This is private """
         try:
             await interaction.response.send_message(f"{interaction.user.mention} namefilter loading...", ephemeral=True)
+            # re-check perm
+            try:
+                is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
+                if is_mod is False:
+                    await interaction.edit_original_response(
+                        content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                    )
+                    return
+            except Exception as e:
+                traceback.print_exc(file=sys.stdout)
+            # end of re-check perm
+
             if str(interaction.guild.id) not in self.bot.log_channel_guild or \
                 self.bot.log_channel_guild[str(interaction.guild.id)] is None:
                 await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
@@ -373,7 +395,6 @@ class Commanding(commands.Cog):
             traceback.print_exc(file=sys.stdout)
 
     @checks.has_permissions(manage_channels=True)
-    @app_commands.guild_only()
     @ignore_group.command(
         name="deluser",
         description="Delete a user from ignore list of namefilter."
@@ -387,6 +408,18 @@ class Commanding(commands.Cog):
         """ This is private """
         try:
             await interaction.response.send_message(f"{interaction.user.mention} namefilter loading...", ephemeral=True)
+            # re-check perm
+            try:
+                is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
+                if is_mod is False:
+                    await interaction.edit_original_response(
+                        content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                    )
+                    return
+            except Exception as e:
+                traceback.print_exc(file=sys.stdout)
+            # end of re-check perm
+
             if str(interaction.guild.id) not in self.bot.log_channel_guild or \
                 self.bot.log_channel_guild[str(interaction.guild.id)] is None:
                 await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
@@ -467,7 +500,6 @@ class Commanding(commands.Cog):
             traceback.print_exc(file=sys.stdout)
 
     @checks.has_permissions(manage_channels=True)
-    @app_commands.guild_only()
     @ignore_group.command(
         name="addrole",
         description="Add a role to ignore list of namefilter."
@@ -481,6 +513,18 @@ class Commanding(commands.Cog):
         """ This is private """
         try:
             await interaction.response.send_message(f"{interaction.user.mention} namefilter loading...", ephemeral=True)
+            # re-check perm
+            try:
+                is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
+                if is_mod is False:
+                    await interaction.edit_original_response(
+                        content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                    )
+                    return
+            except Exception as e:
+                traceback.print_exc(file=sys.stdout)
+            # end of re-check perm
+
             if str(interaction.guild.id) not in self.bot.log_channel_guild or \
                 self.bot.log_channel_guild[str(interaction.guild.id)] is None:
                 await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
@@ -569,7 +613,6 @@ class Commanding(commands.Cog):
             traceback.print_exc(file=sys.stdout)
 
     @checks.has_permissions(manage_channels=True)
-    @app_commands.guild_only()
     @ignore_group.command(
         name="delrole",
         description="Delete a role from ignore list of namefilter."
@@ -583,6 +626,18 @@ class Commanding(commands.Cog):
         """ This is private """
         try:
             await interaction.response.send_message(f"{interaction.user.mention} namefilter loading...", ephemeral=True)
+            # re-check perm
+            try:
+                is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
+                if is_mod is False:
+                    await interaction.edit_original_response(
+                        content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                    )
+                    return
+            except Exception as e:
+                traceback.print_exc(file=sys.stdout)
+            # end of re-check perm
+
             if str(interaction.guild.id) not in self.bot.log_channel_guild or \
                 self.bot.log_channel_guild[str(interaction.guild.id)] is None:
                 await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
@@ -663,10 +718,9 @@ class Commanding(commands.Cog):
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
 
-    namefilter_group = app_commands.Group(name="namefilter", description="name filter management.")
+    namefilter_group = app_commands.Group(name="namefilter", guild_only=True, description="name filter management.")
 
     @checks.has_permissions(manage_channels=True)
-    @app_commands.guild_only()
     @namefilter_group.command(
         name="apply",
         description="Apply pending regex."
@@ -678,6 +732,18 @@ class Commanding(commands.Cog):
         """ /namefilter apply """
         """ This is private """
         await interaction.response.send_message(f"{interaction.user.mention} namefilter loading...", ephemeral=True)
+        # re-check perm
+        try:
+            is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
+            if is_mod is False:
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                )
+                return
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+        # end of re-check perm
+
         if str(interaction.guild.id) not in self.bot.log_channel_guild or \
             self.bot.log_channel_guild[str(interaction.guild.id)] is None:
             await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
@@ -768,7 +834,6 @@ class Commanding(commands.Cog):
                 traceback.print_exc(file=sys.stdout)
 
     @checks.has_permissions(manage_channels=True)
-    @app_commands.guild_only()
     @namefilter_group.command(
         name="test",
         description="Test if a given name matches."
@@ -782,6 +847,7 @@ class Commanding(commands.Cog):
         """ This is public """
         name = name.strip()
         await interaction.response.send_message(f"{interaction.user.mention} namefilter loading...")
+
         if str(interaction.guild.id) not in self.bot.log_channel_guild or \
             self.bot.log_channel_guild[str(interaction.guild.id)] is None:
             await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
@@ -842,7 +908,6 @@ class Commanding(commands.Cog):
                 traceback.print_exc(file=sys.stdout)
 
     @checks.has_permissions(manage_channels=True)
-    @app_commands.guild_only()
     @namefilter_group.command(
         name="del",
         description="Delete a filter from watching."
@@ -856,6 +921,19 @@ class Commanding(commands.Cog):
         """ This is private """
         regex = regex.strip()
         await interaction.response.send_message(f"{interaction.user.mention} namefilter loading...", ephemeral=True)
+
+        # re-check perm
+        try:
+            is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
+            if is_mod is False:
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                )
+                return
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+        # end of re-check perm
+
         if str(interaction.guild.id) not in self.bot.log_channel_guild or \
             self.bot.log_channel_guild[str(interaction.guild.id)] is None:
             await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
@@ -936,7 +1014,6 @@ class Commanding(commands.Cog):
             ]
 
     @checks.has_permissions(manage_channels=True)
-    @app_commands.guild_only()
     @namefilter_group.command(
         name="add",
         description="Add name filter to watch."
@@ -950,6 +1027,19 @@ class Commanding(commands.Cog):
         """ This is private """
         regex = regex.strip()
         await interaction.response.send_message(f"{interaction.user.mention} namefilter loading...", ephemeral=True)
+
+        # re-check perm
+        try:
+            is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
+            if is_mod is False:
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                )
+                return
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+        # end of re-check perm
+
         if str(interaction.guild.id) not in self.bot.log_channel_guild or \
             self.bot.log_channel_guild[str(interaction.guild.id)] is None:
             await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
@@ -1054,7 +1144,6 @@ class Commanding(commands.Cog):
                 traceback.print_exc(file=sys.stdout)
 
     @checks.has_permissions(manage_channels=True)
-    @app_commands.guild_only()
     @namefilter_group.command(
         name="list",
         description="Get name filter list."
@@ -1066,6 +1155,18 @@ class Commanding(commands.Cog):
         """ /namefilter list """
         """ This is private """
         await interaction.response.send_message(f"{interaction.user.mention} namefilter loading...", ephemeral=True)
+        # re-check perm
+        try:
+            is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
+            if is_mod is False:
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                )
+                return
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+        # end of re-check perm
+
         if str(interaction.guild.id) not in self.bot.log_channel_guild or \
             self.bot.log_channel_guild[str(interaction.guild.id)] is None:
             await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
@@ -1125,7 +1226,6 @@ class Commanding(commands.Cog):
             await interaction.edit_original_response(content=f"{interaction.user.mention}, there is not any regex in this guild yet.")    
 
     @checks.has_permissions(manage_channels=True)
-    @app_commands.guild_only()
     @app_commands.command(
         name="logchan",
         description="Set log channel."
@@ -1141,6 +1241,18 @@ class Commanding(commands.Cog):
         if type(channel) is not discord.TextChannel:
             await interaction.edit_original_response(content=f"{interaction.user.mention}, that's not text channel.")
             return
+
+        # re-check perm
+        try:
+            is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
+            if is_mod is False:
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                )
+                return
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+        # end of re-check perm
 
         if str(interaction.guild.id) not in self.bot.log_channel_guild:
             # doesn't have data, insert guild to it
@@ -1199,7 +1311,6 @@ class Commanding(commands.Cog):
                 )
 
     @checks.has_permissions(manage_channels=True)
-    @app_commands.guild_only()
     @app_commands.command(
         name="scannick",
         description="Scan all users in the guild with regex matches."
@@ -1213,6 +1324,19 @@ class Commanding(commands.Cog):
         """ This is private """
         regex = regex.strip()
         await interaction.response.send_message(f"{interaction.user.mention} scanning nicks...", ephemeral=True)
+
+        # re-check perm
+        try:
+            is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
+            if is_mod is False:
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                )
+                return
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+        # end of re-check perm
+
         if str(interaction.guild.id) not in self.bot.log_channel_guild or \
             self.bot.log_channel_guild[str(interaction.guild.id)] is None:
             await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")

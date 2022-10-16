@@ -199,7 +199,7 @@ class Events(commands.Cog):
                                 if r:
                                     # Check if user can kick/ban, skip
                                     try:
-                                        check_perm = await self.utils.user_can_kick_ban(after.guild, after.id)
+                                        check_perm = await self.utils.get_user_perms(after.guild, after.id)
                                         if check_perm is not None and \
                                             (check_perm['kick_members'] is True or check_perm['ban_members'] is True):
                                             await self.utils.log_to_channel(
@@ -296,7 +296,7 @@ class Events(commands.Cog):
                                 if r:
                                     # Check if user can kick/ban, skip
                                     try:
-                                        check_perm = await self.utils.user_can_kick_ban(after.guild, after.id)
+                                        check_perm = await self.utils.get_user_perms(after.guild, after.id)
                                         if check_perm is not None and \
                                             (check_perm['kick_members'] is True or check_perm['ban_members'] is True):
                                             await self.utils.log_to_channel(

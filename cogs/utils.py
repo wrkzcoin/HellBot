@@ -495,13 +495,68 @@ class Utils(commands.Cog):
             traceback.print_exc(file=sys.stdout)
         return None
 
-    async def user_can_kick_ban(self, guild, user_id):
+    async def get_user_perms(self, guild, user_id):
         try:
             get_user = guild.get_member(user_id)
             return dict(get_user.guild_permissions)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
         return None
+
+    async def is_moderator(self, guild, user_id):
+        """
+        Sample permission dict
+        {
+            'create_instant_invite': True,
+            'kick_members': False,
+            'ban_members': False,
+            'administrator': True,
+            'manage_channels': True,
+            'manage_guild': True,
+            'add_reactions': True,
+            'view_audit_log': True,
+            'priority_speaker': False,
+            'stream': True,
+            'view_channel': True,
+            'send_messages': True,
+            'send_tts_messages': True,
+            'manage_messages': False,
+            'embed_links': True,
+            'attach_files': True,
+            'read_message_history': True,
+            'mention_everyone': True,
+            'external_emojis': True,
+            'view_guild_insights': False,
+            'connect': True,
+            'speak': True,
+            'mute_members': False,
+            'deafen_members': False,
+            'move_members': False,
+            'use_voice_activation': True,
+            'change_nickname': True,
+            'manage_nicknames': False,
+            'manage_roles': True,
+            'manage_webhooks': False,
+            'manage_emojis': False,
+            'use_slash_commands': True,
+            'request_to_speak': True,
+            'manage_events': False,
+            'manage_threads': False,
+            'create_public_threads': False,
+            'create_private_threads': False,
+            'external_stickers': False,
+            'send_messages_in_threads': False,
+            'start_embedded_activities': False,
+            'moderate_members': False}
+        """
+        try:
+            get_user = guild.get_member(user_id)
+            check_perm = dict(get_user.guild_permissions)
+            if check_perm and check_perm['manage_channels'] is True:
+                return True
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+        return False
 
     @commands.Cog.listener()
     async def on_ready(self):
