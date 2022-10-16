@@ -17,17 +17,24 @@ from cogs.utils import Utils
 
 
 class ConfirmApply(discord.ui.View):
-    def __init__(self, bot, interaction, timeout: float, disable_button: bool, list_users):
+    def __init__(
+        self, bot, interaction, timeout: float,
+        disable_button: bool, list_users, disable_apply: bool
+    ):
         super().__init__(timeout=timeout)
         self.bot = bot
         self.utils = Utils(self.bot)
         self.disable_button = disable_button
+        self.disable_apply = disable_apply
         self.interaction = interaction
         self.list_users = list_users
         if self.disable_button is True:
             for child in self.children:
                 if isinstance(child, discord.ui.Button):
                     child.disabled = True
+
+        if self.disable_apply is True:
+            self.confirm.disabled = True
 
     async def on_timeout(self):
         for child in self.children:
@@ -121,39 +128,20 @@ class ConfirmApply(discord.ui.View):
                             # check if user in ignore list role
                             get_user = interaction.guild.get_member(each)
                             if len(get_user.roles) > 0:
-                                got_role = None
-                                for each in get_user.roles:
+                                for r in get_user.roles:
                                     try:
                                         if str(get_user.guild.id) in self.bot.exceptional_role_id and \
-                                            each.id in self.bot.exceptional_role_id[str(get_user.guild.id)]:
-                                            got_role = each
+                                            r.id in self.bot.exceptional_role_id[str(get_user.guild.id)]:
                                             ignore = True
                                             break
                                     except Exception as e:
                                         traceback.print_exc(file=sys.stdout)
                                 if ignore is True:
-                                    try:
-                                        if str(get_user.guild.id) in self.bot.log_channel_guild and \
-                                            self.bot.log_channel_guild[str(get_user.guild.id)] and get_user.bot is False:
-                                            await self.utils.log_to_channel(
-                                                self.bot.log_channel_guild[str(get_user.guild.id)],
-                                                f"[**ignore user**] `{each}` User `{get_user.name}` | {get_user.mention} | Having role `{got_role.name}`."
-                                            )
-                                    except Exception as e:
-                                        traceback.print_exc(file=sys.stdout)
                                     continue
                             # check if user in ignore list
                             try:
                                 if str(get_user.guild.id) in self.bot.exceptional_user_name_id and \
                                     get_user.id in self.bot.exceptional_user_name_id[str(get_user.guild.id)] and get_user.bot is False:
-                                    try:
-                                        if self.bot.log_channel_guild[str(get_user.guild.id)]:
-                                            await self.utils.log_to_channel(
-                                                self.bot.log_channel_guild[str(get_user.guild.id)],
-                                                f"[**ignore user**] `{each}` User `{get_user.name}` | {get_user.mention} | Ignored User ID `{get_user.id}`"
-                                            )
-                                    except Exception as e:
-                                        traceback.print_exc(file=sys.stdout)
                                     continue
                             except Exception as e:
                                 traceback.print_exc(file=sys.stdout)
@@ -847,10 +835,10 @@ class Commanding(commands.Cog):
                         ignore = False
                         # check if user in ignore list role
                         if len(each.roles) > 0:
-                            for each in each.roles:
+                            for r in each.roles:
                                 try:
                                     if str(interaction.guild.id) in self.bot.exceptional_role_id and \
-                                        each.id in self.bot.exceptional_role_id[str(interaction.guild.id)]:
+                                        r.id in self.bot.exceptional_role_id[str(interaction.guild.id)]:
                                         ignore = True
                                         break
                                 except Exception as e:
@@ -894,7 +882,29 @@ class Commanding(commands.Cog):
                             value="N/A",
                             inline=False
                         )
-                    view = ConfirmApply(self.bot, interaction, timeout=30, disable_button=False, list_users=found_user_id)
+
+                    disable_apply = False
+                    if len(found_user_id) > len(interaction.guild.members) * self.bot.config['discord']['max_apply_ban_ratio'] or \
+                        len(found_user_id) > self.bot.config['discord']['max_apply_ban_users']:
+                        disable_apply = True
+                        embed.set_footer(
+                            text="Apply / Confirmation disable! Too many members affected!",
+                            icon_url=interaction.user.display_avatar
+                        )
+                        try:
+                            await self.utils.log_to_channel(
+                                self.bot.config['discord']['log_channel'],
+                                f"{interaction.user.name} / `{interaction.user.id}` in guild `{interaction.guild.id}` "\
+                                f"executed `/namefilter apply` regex `{regex}` but disable confirmation! Too many members "\
+                                f"affected `{str(len(found_user_id))}` of total `{str(len(interaction.guild.members))}`."
+                            )
+                        except Exception as e:
+                            traceback.print_exc(file=sys.stdout)
+                    view = ConfirmApply(
+                        self.bot, interaction, timeout=30, 
+                        disable_button=False, list_users=found_user_id, 
+                        disable_apply=True
+                    )
                     await interaction.edit_original_response(content=None, embed=embed, view=view)
                     await view.wait()
                 else:
