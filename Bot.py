@@ -34,12 +34,18 @@ bot.exceptional_role_id = {}
 bot.exceptional_user_name_id = {}
 bot.log_channel_guild = {}
 
+bot.max_ignored_user = {}
+bot.max_ignored_role = {}
+
 # example:
 # bot.name_filter_list[guild_id] = ["(?i)bot$.", "(?i) bot$", "..."]
 # bot.name_filter_list_pending[guild_id] = ["(?i)bot$.", "(?i) bot$", "..."]
 # bot.exceptional_role_id[guild_id] = [111111111, 22222222, ...] # meaning this role can change any username
 # bot.exceptional_user_name_id[guild_id] = [222222222, 2222222, ...] # meaning he can change to any user_name
 # bot.log_channel_guild[guild_id] = 111111
+
+# bot.max_ignored_user[guild_id] = 111
+# bot.max_ignored_role[guild_id] = 111
 
 @bot.event
 async def on_ready() -> None:
@@ -62,7 +68,7 @@ async def status_task() -> None:
     """
     Setup the game status task of the bot
     """
-    statuses = ["Start with /", "on Ethereum", "on Polygon", "brought by Art101"]
+    statuses = ["Starts with /", "With /logchan", "With /namefilter", "With /ignore", "Brought by WrkzCoin"]
     await bot.change_presence(activity=discord.Game(random.choice(statuses)))
 
 

@@ -89,7 +89,7 @@ class Events(commands.Cog):
                         traceback.print_exc(file=sys.stdout)
                 if ignore is True:
                     try:
-                        if self.bot.log_channel_guild[str(member.guild.id)]:
+                        if member.bot is False and self.bot.log_channel_guild[str(member.guild.id)]:
                             await self.utils.log_to_channel(
                                 self.bot.log_channel_guild[str(member.guild.id)],
                                 f"[**ignore user**] User `{member.name}` | {member.mention} | Having role `{got_role.name}`."
@@ -102,7 +102,7 @@ class Events(commands.Cog):
                 if str(member.guild.id) in self.bot.exceptional_user_name_id and \
                     member.id in self.bot.exceptional_user_name_id[str(member.guild.id)]:
                     try:
-                        if self.bot.log_channel_guild[str(member.guild.id)]:
+                        if member.bot is False and self.bot.log_channel_guild[str(member.guild.id)]:
                             await self.utils.log_to_channel(
                                 self.bot.log_channel_guild[str(member.guild.id)],
                                 f"[**ignore user**] User `{member.name}` | {member.mention} | Ignored User ID `{member.id}`"
@@ -136,12 +136,19 @@ class Events(commands.Cog):
                                         f"{member.name} / {member.mention} matches with `{each}`."
                                     )
                                 else:
-                                    # TODO, add ban/kick code
-                                    await self.utils.log_to_channel(
-                                        self.bot.log_channel_guild[str(member.guild.id)],
-                                        f"[**matches regex**] [**ban**] {member.id} / "\
-                                        f"{member.name} / {member.mention} matches with `{each}`."
-                                    )
+                                    try:
+                                        await member.guild.kick(
+                                            user=member,
+                                            reason=f"You are kicked from `{member.guild.name}`. "\
+                                                f"Name matches `{each}`"
+                                        )
+                                        await self.utils.log_to_channel(
+                                            self.bot.log_channel_guild[str(member.guild.id)],
+                                            f"[**matches regex**] [**kick**] {member.id} / "\
+                                            f"{member.name} / {member.mention} matches with `{each}`."
+                                        )
+                                    except Exception as e:
+                                        traceback.print_exc(file=sys.stdout)
                                 break
                         except Exception as e:
                             traceback.print_exc(file=sys.stdout)
@@ -167,45 +174,6 @@ class Events(commands.Cog):
                         "Bot doesn't have permission kick/ban to process next step of checking!"
                     )
             # end of check permission
-            ignore = False
-            # check if user in ignore list role
-            if len(after.roles) > 0:
-                got_role = None
-                for each in after.roles:
-                    try:
-                        if str(after.guild.id) in self.bot.exceptional_role_id and \
-                            each.id in self.bot.exceptional_role_id[str(after.guild.id)]:
-                            got_role = each
-                            ignore = True
-                            break
-                    except Exception as e:
-                        traceback.print_exc(file=sys.stdout)
-                if ignore is True:
-                    try:
-                        if str(after.guild.id) in self.bot.log_channel_guild and \
-                            self.bot.log_channel_guild[str(after.guild.id)]:
-                            await self.utils.log_to_channel(
-                                self.bot.log_channel_guild[str(after.guild.id)],
-                                f"[**ignore user**] `{each}` User `{after.name}` | {after.mention} | Having role `{got_role.name}`."
-                            )
-                    except Exception as e:
-                        traceback.print_exc(file=sys.stdout)
-                    return
-            # check if user in ignore list
-            try:
-                if str(after.guild.id) in self.bot.exceptional_user_name_id and \
-                    after.id in self.bot.exceptional_user_name_id[str(after.guild.id)]:
-                    try:
-                        if self.bot.log_channel_guild[str(after.guild.id)]:
-                            await self.utils.log_to_channel(
-                                self.bot.log_channel_guild[str(after.guild.id)],
-                                f"[**ignore user**] `{each}` User `{after.name}` | {after.mention} | Ignored User ID `{after.id}`"
-                            )
-                    except Exception as e:
-                        traceback.print_exc(file=sys.stdout)
-                    return
-            except Exception as e:
-                traceback.print_exc(file=sys.stdout)
 
             if after.nick is None:
                 try:
@@ -224,6 +192,62 @@ class Events(commands.Cog):
                                 regex_test = r"{}".format(each)
                                 r = re.search(regex_test, after.name)
                                 if r:
+                                    # Check if user can kick/ban, skip
+                                    try:
+                                        check_perm = await self.utils.user_can_kick_ban(after.guild, after.id)
+                                        if check_perm is not None and \
+                                            (check_perm['kick_members'] is True or check_perm['ban_members'] is True):
+                                            await self.utils.log_to_channel(
+                                                self.bot.log_channel_guild[str(after.guild.id)],
+                                                f"User `{after.name}` | {after.mention} updated name matches `{each}` but "\
+                                                "He/she has permission to kick/ban (Excluded)!"
+                                            )
+                                            return
+                                    except Exception as e:
+                                        traceback.print_exc(file=sys.stdout)
+                                    # End of check user can kick/ban
+
+                                    ignore = False
+                                    # check if user in ignore list role
+                                    if len(after.roles) > 0:
+                                        got_role = None
+                                        for each in after.roles:
+                                            try:
+                                                if str(after.guild.id) in self.bot.exceptional_role_id and \
+                                                    each.id in self.bot.exceptional_role_id[str(after.guild.id)]:
+                                                    got_role = each
+                                                    ignore = True
+                                                    break
+                                            except Exception as e:
+                                                traceback.print_exc(file=sys.stdout)
+                                        if ignore is True:
+                                            try:
+                                                if str(after.guild.id) in self.bot.log_channel_guild and \
+                                                    self.bot.log_channel_guild[str(after.guild.id)] and after.bot is False:
+                                                    await self.utils.log_to_channel(
+                                                        self.bot.log_channel_guild[str(after.guild.id)],
+                                                        f"[**ignore user**] `{each}` User `{after.name}` | {after.mention} | Having role `{got_role.name}`."
+                                                    )
+                                            except Exception as e:
+                                                traceback.print_exc(file=sys.stdout)
+                                            return
+                                    # check if user in ignore list
+                                    try:
+                                        if str(after.guild.id) in self.bot.exceptional_user_name_id and \
+                                            after.id in self.bot.exceptional_user_name_id[str(after.guild.id)] and after.bot is False:
+                                            try:
+                                                if self.bot.log_channel_guild[str(after.guild.id)]:
+                                                    await self.utils.log_to_channel(
+                                                        self.bot.log_channel_guild[str(after.guild.id)],
+                                                        f"[**ignore user**] `{each}` User `{after.name}` | {after.mention} | Ignored User ID `{after.id}`"
+                                                    )
+                                            except Exception as e:
+                                                traceback.print_exc(file=sys.stdout)
+                                            return
+                                    except Exception as e:
+                                        traceback.print_exc(file=sys.stdout)
+                                    # end of check if user in ignore list
+
                                     if self.bot.config['discord']['is_testing'] == 1:
                                         await self.utils.log_to_channel(
                                             self.bot.log_channel_guild[str(after.guild.id)],
@@ -231,12 +255,17 @@ class Events(commands.Cog):
                                             f" matches with `{each}`."
                                         )
                                     else:
-                                        # TODO, add ban/kick code
-                                        await self.utils.log_to_channel(
-                                            self.bot.log_channel_guild[str(after.guild.id)],
-                                            f"[**matches regex**] [**ban**] {after.id} / {after.name} / {after.mention} "\
-                                            f"matches with `{each}`."
-                                        )
+                                        try:
+                                            await after.guild.kick(
+                                                user=after, reason=f"You are kicked from `{after.guild.name}`. Name matches `{each}`."
+                                            )
+                                            await self.utils.log_to_channel(
+                                                self.bot.log_channel_guild[str(after.guild.id)],
+                                                f"[**matches regex**] [**kick**] {after.id} / {after.name} / {after.mention} "\
+                                                f"matches with `{each}`."
+                                            )
+                                        except Exception as e:
+                                            traceback.print_exc(file=sys.stdout)
                                     break
                             except Exception as e:
                                 traceback.print_exc(file=sys.stdout)
@@ -259,6 +288,62 @@ class Events(commands.Cog):
                                 regex_test = r"{}".format(each)
                                 r = re.search(regex_test, after.nick)
                                 if r:
+                                    # Check if user can kick/ban, skip
+                                    try:
+                                        check_perm = await self.utils.user_can_kick_ban(after.guild, after.id)
+                                        if check_perm is not None and \
+                                            (check_perm['kick_members'] is True or check_perm['ban_members'] is True):
+                                            await self.utils.log_to_channel(
+                                                self.bot.log_channel_guild[str(after.guild.id)],
+                                                f"User `{after.name}` | {after.mention} updated name matches `{each}` but "\
+                                                "He/she has permission to kick/ban (Excluded)!"
+                                            )
+                                            return
+                                    except Exception as e:
+                                        traceback.print_exc(file=sys.stdout)
+                                    # End of check user can kick/ban
+
+                                    ignore = False
+                                    # check if user in ignore list role
+                                    if len(after.roles) > 0:
+                                        got_role = None
+                                        for each in after.roles:
+                                            try:
+                                                if str(after.guild.id) in self.bot.exceptional_role_id and \
+                                                    each.id in self.bot.exceptional_role_id[str(after.guild.id)]:
+                                                    got_role = each
+                                                    ignore = True
+                                                    break
+                                            except Exception as e:
+                                                traceback.print_exc(file=sys.stdout)
+                                        if ignore is True:
+                                            try:
+                                                if str(after.guild.id) in self.bot.log_channel_guild and \
+                                                    self.bot.log_channel_guild[str(after.guild.id)] and after.bot is False:
+                                                    await self.utils.log_to_channel(
+                                                        self.bot.log_channel_guild[str(after.guild.id)],
+                                                        f"[**ignore user**] `{each}` User `{after.name}` | {after.mention} | Having role `{got_role.name}`."
+                                                    )
+                                            except Exception as e:
+                                                traceback.print_exc(file=sys.stdout)
+                                            return
+                                    # check if user in ignore list
+                                    try:
+                                        if str(after.guild.id) in self.bot.exceptional_user_name_id and \
+                                            after.id in self.bot.exceptional_user_name_id[str(after.guild.id)] and after.bot is False:
+                                            try:
+                                                if self.bot.log_channel_guild[str(after.guild.id)]:
+                                                    await self.utils.log_to_channel(
+                                                        self.bot.log_channel_guild[str(after.guild.id)],
+                                                        f"[**ignore user**] `{each}` User `{after.name}` | {after.mention} | Ignored User ID `{after.id}`"
+                                                    )
+                                            except Exception as e:
+                                                traceback.print_exc(file=sys.stdout)
+                                            return
+                                    except Exception as e:
+                                        traceback.print_exc(file=sys.stdout)
+                                    # end of check if user in ignore list
+
                                     if self.bot.config['discord']['is_testing'] == 1:
                                         await self.utils.log_to_channel(
                                             self.bot.log_channel_guild[str(after.guild.id)],
@@ -266,12 +351,19 @@ class Events(commands.Cog):
                                             f"{after.mention} matches with `{each}`."
                                         )
                                     else:
-                                        # TODO, add ban/kick code
-                                        await self.utils.log_to_channel(
-                                            self.bot.log_channel_guild[str(after.guild.id)],
-                                            f"[**matches regex**] [**ban**] {after.id} / {after.name} / "\
-                                            f"{after.mention} matches with `{each}`."
-                                        )
+                                        try:
+                                            await after.guild.kick(
+                                                user=after,
+                                                reason=f"You are kicked from `{after.guild.name}`. Name matches `{each}`"
+                                            )
+                                            await self.utils.log_to_channel(
+                                                self.bot.log_channel_guild[str(after.guild.id)],
+                                                f"[**matches regex**] [**kick**] {after.id} / {after.name} / "\
+                                                f"{after.mention} matches with `{each}`."
+                                            )
+                                            await asyncio.sleep(0.1)
+                                        except Exception as e:
+                                            traceback.print_exc(file=sys.stdout)
                                     break
                             except Exception as e:
                                 traceback.print_exc(file=sys.stdout)

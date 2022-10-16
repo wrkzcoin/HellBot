@@ -62,12 +62,16 @@ class Utils(commands.Cog):
                     await cur.execute(sql, )
                     result = await cur.fetchall()
                     self.bot.log_channel_guild = {}
+                    self.bot.max_ignored_user = {}
+                    self.bot.max_ignored_role = {}
                     if result:
                         for each in result:
                             if each['log_channel_id']:
                                 self.bot.log_channel_guild[each['guild_id']] = int(each['log_channel_id'])
                             else:
                                 self.bot.log_channel_guild[each['guild_id']] = None
+                            self.bot.max_ignored_user[each['guild_id']] = each['max_ignored_users']
+                            self.bot.max_ignored_role[each['guild_id']] = each['max_ignored_roles']
                     else:
                         self.bot.log_channel_guild[each['guild_id']] = None
                     # name_filters
@@ -118,11 +122,17 @@ class Utils(commands.Cog):
                     await cur.execute(sql, guild_id)
                     result = await cur.fetchone()
                     self.bot.log_channel_guild[guild_id] = None
+                    self.bot.max_ignored_user[guild_id] = None
+                    self.bot.max_ignored_role[guild_id] = None
                     if result:
                         if result['log_channel_id']:
-                            self.bot.log_channel_guild[guild_id] = int(each['log_channel_id'])
+                            self.bot.log_channel_guild[guild_id] = int(result['log_channel_id'])
+                            self.bot.max_ignored_user[guild_id] = result['max_ignored_users']
+                            self.bot.max_ignored_role[guild_id] = result['max_ignored_roles']
                         else:
                             self.bot.log_channel_guild[guild_id] = None
+                            self.bot.max_ignored_user[guild_id] = None
+                            self.bot.max_ignored_role[guild_id] = None
                     # name_filters
                     sql = """ SELECT * FROM `name_filters` WHERE `guild_id`=%s """
                     await cur.execute(sql, guild_id)
@@ -474,8 +484,16 @@ class Utils(commands.Cog):
 
     async def bot_can_kick_ban(self, guild):
         try:
-            get_bot_user = guild.get_member((self.bot.user.id))
+            get_bot_user = guild.get_member(self.bot.user.id)
             return dict(get_bot_user.guild_permissions)
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+        return None
+
+    async def user_can_kick_ban(self, guild, user_id):
+        try:
+            get_user = guild.get_member(user_id)
+            return dict(get_user.guild_permissions)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
         return None

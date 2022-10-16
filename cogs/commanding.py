@@ -95,12 +95,38 @@ class ConfirmApply(discord.ui.View):
                 self.bot.name_filter_list_pending[str(interaction.guild.id)] and\
                     len(self.bot.name_filter_list_pending[str(interaction.guild.id)]) == 1:
                 regex = self.bot.name_filter_list_pending[str(interaction.guild.id)][0]
+
+                if len(self.list_users) > len(interaction.guild.members) * self.bot.config['discord']['max_apply_ban_ratio'] or \
+                    len(self.list_users) > self.bot.config['discord']['max_apply_ban_users']:
+                    await interaction.edit_original_response(content="There are more than 25 percents or 100 users to ban. Rejected!")
+                    return
+
                 applying = await self.utils.update_regex_on(str(interaction.guild.id), regex)
                 if applying is True:
-                    print("OK, find user and ban if matches")
                     if len(self.list_users) > 0:
-                        # ban them all
-                        print("There is user to ban")
+                        for each in self.list_users:
+                            # Check if user can kick/ban, skip
+                            try:
+                                check_perm = await self.utils.user_can_kick_ban(interaction.guild, each)
+                                if check_perm is not None and \
+                                    (check_perm['kick_members'] is True or check_perm['ban_members'] is True):
+                                    continue
+                            except Exception as e:
+                                traceback.print_exc(file=sys.stdout)
+                            # End of check user can kick/ban
+                            try:
+                                get_user = interaction.guild.get_member(each)
+                                await interaction.guild.kick(
+                                    user=get_user,
+                                    reason=f'You are kicked from `{interaction.guild.name}`. Nick name matches `{regex}`'
+                                )
+                                await self.utils.log_to_channel(
+                                    self.bot.log_channel_guild[str(interaction.guild.id)],
+                                    f"{interaction.user.name} / `{interaction.user.id}` executed `/namefilter apply` regex {regex}. "\
+                                    f"Kicked <@{str(each)}> `{str(each)}`"
+                                )
+                            except Exception:
+                                traceback.print_exc(file=sys.stdout)
                         await interaction.edit_original_response(
                             content=f"Saved `{regex}` to your guild! "\
                             f"Also banned {str(len(self.list_users))}"
@@ -139,6 +165,33 @@ class Commanding(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot: commands.Bot = bot
         self.utils = Utils(bot)
+
+    @app_commands.command(
+        name="reload",
+        description="Reload data"
+    )
+    async def command_reload_data(
+        self,
+        interaction: discord.Interaction,
+    ) -> None:
+        """ /reload """
+        """ This is private """
+        if interaction.user.id not in self.bot.config['discord']['admin']:
+            await interaction.response.send_message(f"{interaction.user.mention}, permission denied")
+            return
+
+        await interaction.response.send_message(f"{interaction.user.mention} reloading...", ephemeral=True)
+        try:
+            await self.utils.load_reload_bot_data()
+            await interaction.edit_original_response(
+                content=f"{interaction.user.mention}, data reloaded successfully!"
+            )
+            await self.utils.log_to_channel(
+                self.bot.config['discord']['log_channel'],
+                f"{interaction.user.name} / `{interaction.user.id}` execute command /reload data"
+            )
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
 
     ignore_group = app_commands.Group(name="ignore", description="Ignore role or name.")
 
@@ -203,6 +256,9 @@ class Commanding(commands.Cog):
                             ignored_list.append("User: <@{}>, added by <@{}> {}".format(each['user_id'], each['added_by'], added_time))
                     if len(get_exceptional_roles) > 0:
                         for each in get_exceptional_roles:
+                            added_time = discord.utils.format_dt(
+                                datetime.fromtimestamp(each['added_date']), style='R'
+                            )
                             ignored_list.append("Role: <@&{}>, added by <@{}> {}".format(each['role_id'], each['added_by'], added_time))
                     ignored_list_str = "\n".join(ignored_list)
                     await interaction.edit_original_response(
@@ -256,17 +312,20 @@ class Commanding(commands.Cog):
                         return
                 # End of check permission
                 get_exceptional_users = await self.utils.get_exceptional_users_list(str(interaction.guild.id))
-                if len(get_exceptional_users) > self.bot.config['discord']['max_ignore_users_per_guild']:
-                    await interaction.edit_original_response(content=f"{interaction.user.mention}, your guild reaches maximum list of exclusion users.")
+                if len(get_exceptional_users) >= self.bot.max_ignored_user[str(interaction.guild.id)]:
+                    await interaction.edit_original_response(content=f"{interaction.user.mention}, your guild reaches "\
+                        f"maximum list of exclusion users `{str(self.bot.max_ignored_user[str(interaction.guild.id)])}`.")
                     await self.utils.log_to_channel(
                         self.bot.config['discord']['log_channel'],
                         f"{interaction.user.name} / `{interaction.user.id}` in guild `{interaction.guild.id}`"\
-                        f" try to add user to ignore list but reach limit."
+                        f" try to add user to ignore list but reach limit `{str(self.bot.max_ignored_user[str(interaction.guild.id)])}`."
                     )
                     await self.utils.log_to_channel(
                         self.bot.log_channel_guild[str(interaction.guild.id)],
-                        f"{interaction.user.name} / `{interaction.user.id}` executed `/ignore adduser `{member.name}` but exceeded limit."
+                        f"{interaction.user.name} / `{interaction.user.id}` executed `/ignore adduser {member.name}` "\
+                        f"but exceeded limit `{str(self.bot.max_ignored_user[str(interaction.guild.id)])}`."
                     )
+                    return
                 else:
                     existing_user_ids = [int(each['user_id']) for each in get_exceptional_users]
                     if len(existing_user_ids) > 0 and member.id in existing_user_ids:
@@ -282,6 +341,10 @@ class Commanding(commands.Cog):
                             self.bot.exceptional_user_name_id[str(interaction.guild.id)] = []
                         self.bot.exceptional_user_name_id[str(interaction.guild.id)].append(member.id) # integer
 
+                        await interaction.edit_original_response(
+                            content=f"{interaction.user.mention}, added ignore role `{member.name}` / `{member.id}` successfully!"
+                        )
+
                         await self.utils.log_to_channel(
                             self.bot.config['discord']['log_channel'],
                             f"{interaction.user.name} / `{interaction.user.id}` in guild `{interaction.guild.id}`"\
@@ -292,6 +355,9 @@ class Commanding(commands.Cog):
                             f"{interaction.user.name} / `{interaction.user.id}` executed `/ignore adduser `{member.name} / {member.id}`."
                         )
                     else:
+                        await interaction.edit_original_response(
+                            content=f"{interaction.user.mention}, internal error when adding user. Please report!"
+                        )
                         await self.utils.log_to_channel(
                             self.bot.config['discord']['log_channel'],
                             f"{interaction.user.name} / `{interaction.user.id}` in guild `{interaction.guild.id}`"\
@@ -382,6 +448,10 @@ class Commanding(commands.Cog):
                                 f"{interaction.user.name} / `{interaction.user.id}` executed `/ignore deluser `{member.name} / {member.id}`."
                             )
                         else:
+                            await interaction.edit_original_response(
+                                content=f"{interaction.user.mention}, failed to remove ignore member `{member.name} / {member.id}`."\
+                                    " Please report!"
+                            )
                             await self.utils.log_to_channel(
                                 self.bot.config['discord']['log_channel'],
                                 f"{interaction.user.name} / `{interaction.user.id}` in guild `{interaction.guild.id}`"\
@@ -439,16 +509,18 @@ class Commanding(commands.Cog):
                         return
                 # End of check permission
                 get_exceptional_roles = await self.utils.get_exceptional_roles_list(str(interaction.guild.id))
-                if len(get_exceptional_roles) > self.bot.config['discord']['max_ignore_roles_per_guild']:
-                    await interaction.edit_original_response(content=f"{interaction.user.mention}, your guild reaches maximum list of exclusion roles.")
+                if len(get_exceptional_roles) >= self.bot.max_ignored_role[str(interaction.guild.id)]:
+                    await interaction.edit_original_response(content=f"{interaction.user.mention}, your guild reaches "\
+                        f"maximum list of exclusion roles `{str(self.bot.max_ignored_role[str(interaction.guild.id)])}`.")
                     await self.utils.log_to_channel(
                         self.bot.config['discord']['log_channel'],
                         f"{interaction.user.name} / `{interaction.user.id}` in guild `{interaction.guild.id}`"\
-                        f" try to add role to ignore list but reach limit."
+                        f" try to add role to ignore list but reach limit `{str(self.bot.max_ignored_role[str(interaction.guild.id)])}`."
                     )
                     await self.utils.log_to_channel(
                         self.bot.log_channel_guild[str(interaction.guild.id)],
-                        f"{interaction.user.name} / `{interaction.user.id}` executed `/ignore addrole `{role}` but exceeded limit."
+                        f"{interaction.user.name} / `{interaction.user.id}` executed `/ignore addrole {role}` "\
+                        f"but exceeded limit `{str(self.bot.max_ignored_role[str(interaction.guild.id)])}`."
                     )
                     return
                 else:
@@ -466,6 +538,9 @@ class Commanding(commands.Cog):
                             self.bot.exceptional_role_id[str(interaction.guild.id)] = []
                         self.bot.exceptional_role_id[str(interaction.guild.id)].append(role.id) # integer
 
+                        await interaction.edit_original_response(
+                            content=f"{interaction.user.mention}, added ignore role `{role.name}` successfully!"
+                        )
                         await self.utils.log_to_channel(
                             self.bot.config['discord']['log_channel'],
                             f"{interaction.user.name} / `{interaction.user.id}` in guild `{interaction.guild.id}`"\
@@ -476,6 +551,9 @@ class Commanding(commands.Cog):
                             f"{interaction.user.name} / `{interaction.user.id}` executed `/ignore addrole `{role.name} / {role.id}`."
                         )
                     else:
+                        await interaction.edit_original_response(
+                            content=f"{interaction.user.mention}, internal error when adding role. Please report!"
+                        )
                         await self.utils.log_to_channel(
                             self.bot.config['discord']['log_channel'],
                             f"{interaction.user.name} / `{interaction.user.id}` in guild `{interaction.guild.id}`"\
@@ -567,6 +645,10 @@ class Commanding(commands.Cog):
                                 f"{interaction.user.name} / `{interaction.user.id}` executed `/ignore delrole `{role.name} / {role.id}`."
                             )
                         else:
+                            await interaction.edit_original_response(
+                                content=f"{interaction.user.mention}, failed to remove ignore role `{role.name} / {role.id}`."\
+                                    " Please report!"
+                            )
                             await self.utils.log_to_channel(
                                 self.bot.config['discord']['log_channel'],
                                 f"{interaction.user.name} / `{interaction.user.id}` in guild `{interaction.guild.id}`"\
@@ -1084,6 +1166,15 @@ class Commanding(commands.Cog):
                     f"`{interaction.guild.name} / {interaction.guild.id}` to "\
                     f"{channel.name}."
                 )
+            except discord.errors.Forbidden:
+                await interaction.edit_original_response(content=f"{interaction.user.mention}, error. Maybe I don't have access to that channel.")
+                await self.utils.log_to_channel(
+                    self.bot.config['discord']['log_channel'],
+                    f"{interaction.user.name} / `{interaction.user.id}` in guild "\
+                    f"`{interaction.guild.name} / {interaction.guild.id}` executed "\
+                    f"`/logchan {channel.name}` and failed with permission."
+                )
+                return
             except Exception as e:
                 traceback.print_exc(file=sys.stdout)
                 await interaction.edit_original_response(content=f"{interaction.user.mention}, internal error, please report.")
