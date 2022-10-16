@@ -552,7 +552,8 @@ class Utils(commands.Cog):
         try:
             get_user = guild.get_member(user_id)
             check_perm = dict(get_user.guild_permissions)
-            if check_perm and check_perm['manage_channels'] is True:
+            if check_perm and (check_perm['manage_channels'] is True) or \
+                (check_perm['ban_members'] is True):
                 return True
         except Exception as e:
             traceback.print_exc(file=sys.stdout)

@@ -152,7 +152,8 @@ class ConfirmApply(discord.ui.View):
                             f"{interaction.user.name} / `{interaction.user.id}` executed `/namefilter apply` regex {regex}."
                         )
                     self.bot.name_filter_list_pending[str(interaction.guild.id)] = []
-                    self.bot.name_filter_list[str(interaction.guild.id)].append(regex)
+                    # self.bot.name_filter_list[str(interaction.guild.id)].append(regex)
+                    await self.utils.load_reload_bot_data()
                 else:
                     await interaction.edit_original_response(content="Internal error! Please report!")
         except Exception:
@@ -197,7 +198,7 @@ class Commanding(commands.Cog):
 
     ignore_group = app_commands.Group(name="ignore", guild_only=True, description="Ignore role or name.")
 
-    @checks.has_permissions(manage_channels=True)
+    @checks.has_permissions(ban_members=True)
     @ignore_group.command(
         name="list",
         description="List ignored users and roles from namefilter."
@@ -209,13 +210,13 @@ class Commanding(commands.Cog):
         """ /ignore list """
         """ This is private """
         try:
-            await interaction.response.send_message(f"{interaction.user.mention} namefilter loading...", ephemeral=True)
+            await interaction.response.send_message(f"{interaction.user.mention} ignore loading...", ephemeral=True)
             # re-check perm
             try:
                 is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
                 if is_mod is False:
                     await interaction.edit_original_response(
-                        content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                        content=f"{interaction.user.mention}, permission denied."
                     )
                     return
             except Exception as e:
@@ -281,7 +282,7 @@ class Commanding(commands.Cog):
             traceback.print_exc(file=sys.stdout)
 
 
-    @checks.has_permissions(manage_channels=True)
+    @checks.has_permissions(ban_members=True)
     @ignore_group.command(
         name="adduser",
         description="Add a user to ignore list of namefilter."
@@ -294,13 +295,13 @@ class Commanding(commands.Cog):
         """ /ignore adduser <Member> """
         """ This is private """
         try:
-            await interaction.response.send_message(f"{interaction.user.mention} namefilter loading...", ephemeral=True)
+            await interaction.response.send_message(f"{interaction.user.mention} ignore loading...", ephemeral=True)
             # re-check perm
             try:
                 is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
                 if is_mod is False:
                     await interaction.edit_original_response(
-                        content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                        content=f"{interaction.user.mention}, permission denied."
                     )
                     return
             except Exception as e:
@@ -394,7 +395,7 @@ class Commanding(commands.Cog):
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
 
-    @checks.has_permissions(manage_channels=True)
+    @checks.has_permissions(ban_members=True)
     @ignore_group.command(
         name="deluser",
         description="Delete a user from ignore list of namefilter."
@@ -407,13 +408,13 @@ class Commanding(commands.Cog):
         """ /ignore deluser <Member> """
         """ This is private """
         try:
-            await interaction.response.send_message(f"{interaction.user.mention} namefilter loading...", ephemeral=True)
+            await interaction.response.send_message(f"{interaction.user.mention} ignore loading...", ephemeral=True)
             # re-check perm
             try:
                 is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
                 if is_mod is False:
                     await interaction.edit_original_response(
-                        content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                        content=f"{interaction.user.mention}, permission denied."
                     )
                     return
             except Exception as e:
@@ -499,7 +500,7 @@ class Commanding(commands.Cog):
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
 
-    @checks.has_permissions(manage_channels=True)
+    @checks.has_permissions(ban_members=True)
     @ignore_group.command(
         name="addrole",
         description="Add a role to ignore list of namefilter."
@@ -512,13 +513,13 @@ class Commanding(commands.Cog):
         """ /ignore addrole <Role Name> """
         """ This is private """
         try:
-            await interaction.response.send_message(f"{interaction.user.mention} namefilter loading...", ephemeral=True)
+            await interaction.response.send_message(f"{interaction.user.mention} ignore loading...", ephemeral=True)
             # re-check perm
             try:
                 is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
                 if is_mod is False:
                     await interaction.edit_original_response(
-                        content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                        content=f"{interaction.user.mention}, permission denied."
                     )
                     return
             except Exception as e:
@@ -612,7 +613,7 @@ class Commanding(commands.Cog):
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
 
-    @checks.has_permissions(manage_channels=True)
+    @checks.has_permissions(ban_members=True)
     @ignore_group.command(
         name="delrole",
         description="Delete a role from ignore list of namefilter."
@@ -625,13 +626,13 @@ class Commanding(commands.Cog):
         """ /ignore delrole <Role Name> """
         """ This is private """
         try:
-            await interaction.response.send_message(f"{interaction.user.mention} namefilter loading...", ephemeral=True)
+            await interaction.response.send_message(f"{interaction.user.mention} ignore loading...", ephemeral=True)
             # re-check perm
             try:
                 is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
                 if is_mod is False:
                     await interaction.edit_original_response(
-                        content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                        content=f"{interaction.user.mention}, permission denied."
                     )
                     return
             except Exception as e:
@@ -720,7 +721,7 @@ class Commanding(commands.Cog):
 
     namefilter_group = app_commands.Group(name="namefilter", guild_only=True, description="name filter management.")
 
-    @checks.has_permissions(manage_channels=True)
+    @checks.has_permissions(ban_members=True)
     @namefilter_group.command(
         name="apply",
         description="Apply pending regex."
@@ -737,7 +738,7 @@ class Commanding(commands.Cog):
             is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
             if is_mod is False:
                 await interaction.edit_original_response(
-                    content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                    content=f"{interaction.user.mention}, permission denied."
                 )
                 return
         except Exception as e:
@@ -810,7 +811,14 @@ class Commanding(commands.Cog):
                                 found_user_id.append(each.id)
                                 found_username.append(each.display_name)
                                 found_mention.append(each.mention)
-                    if len(found_user_id) > 0:
+                    if len(found_user_id) > 30:
+                        all_user = ", ".join(found_mention[0:29])
+                        embed.add_field(
+                            name=f"Found {str(len(found_user_id))} user(s)",
+                            value=f"user with `{regex}`.\n{all_user} and other {str(len(found_user_id)-30)} people.",
+                            inline=False
+                        )
+                    elif len(found_user_id) > 0:
                         all_user = ", ".join(found_mention)
                         embed.add_field(
                             name=f"Found {str(len(found_user_id))} user(s)",
@@ -833,7 +841,7 @@ class Commanding(commands.Cog):
             except Exception as e:
                 traceback.print_exc(file=sys.stdout)
 
-    @checks.has_permissions(manage_channels=True)
+    @checks.has_permissions(ban_members=True)
     @namefilter_group.command(
         name="test",
         description="Test if a given name matches."
@@ -907,7 +915,7 @@ class Commanding(commands.Cog):
             except Exception as e:
                 traceback.print_exc(file=sys.stdout)
 
-    @checks.has_permissions(manage_channels=True)
+    @checks.has_permissions(ban_members=True)
     @namefilter_group.command(
         name="del",
         description="Delete a filter from watching."
@@ -927,7 +935,7 @@ class Commanding(commands.Cog):
             is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
             if is_mod is False:
                 await interaction.edit_original_response(
-                    content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                    content=f"{interaction.user.mention}, permission denied."
                 )
                 return
         except Exception as e:
@@ -1013,7 +1021,7 @@ class Commanding(commands.Cog):
                 for item in list_namefilters if current.lower() in item.lower()
             ]
 
-    @checks.has_permissions(manage_channels=True)
+    @checks.has_permissions(ban_members=True)
     @namefilter_group.command(
         name="add",
         description="Add name filter to watch."
@@ -1033,117 +1041,120 @@ class Commanding(commands.Cog):
             is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
             if is_mod is False:
                 await interaction.edit_original_response(
-                    content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                    content=f"{interaction.user.mention}, permission denied."
                 )
                 return
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
         # end of re-check perm
 
-        if str(interaction.guild.id) not in self.bot.log_channel_guild or \
-            self.bot.log_channel_guild[str(interaction.guild.id)] is None:
-            await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
-            return
-        else:
-            # Check permission
-            check_perm = await self.utils.bot_can_kick_ban(interaction.guild)
-            if check_perm is None:
-                await interaction.edit_original_response(
-                    content=f"{interaction.user.mention}, internal error. Check again later!"
-                )
-                await self.utils.log_to_channel(
-                    self.bot.config['discord']['log_channel'],
-                    f"{interaction.user.name} / `{interaction.user.id}` execute command in guild `{interaction.guild.id}`"\
-                    f" but failed to check bot's permission in their guild."
-                )
+        try:
+            if str(interaction.guild.id) not in self.bot.log_channel_guild or \
+                self.bot.log_channel_guild[str(interaction.guild.id)] is None:
+                await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
                 return
             else:
-                if check_perm['kick_members'] is False or check_perm['ban_members'] is False:
+                # Check permission
+                check_perm = await self.utils.bot_can_kick_ban(interaction.guild)
+                if check_perm is None:
                     await interaction.edit_original_response(
-                        content=f"{interaction.user.mention}, bot has no permission to ban/kick member!"\
-                            " Please adjust permission and re-try."
+                        content=f"{interaction.user.mention}, internal error. Check again later!"
+                    )
+                    await self.utils.log_to_channel(
+                        self.bot.config['discord']['log_channel'],
+                        f"{interaction.user.name} / `{interaction.user.id}` execute command in guild `{interaction.guild.id}`"\
+                        f" but failed to check bot's permission in their guild."
+                    )
+                    return
+                else:
+                    if check_perm['kick_members'] is False or check_perm['ban_members'] is False:
+                        await interaction.edit_original_response(
+                            content=f"{interaction.user.mention}, bot has no permission to ban/kick member!"\
+                                " Please adjust permission and re-try."
+                        )
+                        await self.utils.log_to_channel(
+                            self.bot.log_channel_guild[str(interaction.guild.id)],
+                            f"{interaction.user.mention} / `{interaction.user.id}`, please check if Bot has permission kick/ban."
+                        )
+                        return
+                # End of check permission
+                if len(regex) < self.bot.config['discord']['minimum_regex_length']:
+                    await interaction.edit_original_response(content=f"{interaction.user.mention}, given regex `{regex}` is too short.")
+                    return
+                elif len(regex) > self.bot.config['discord']['maximum_regex_length']:
+                    await interaction.edit_original_response(content=f"{interaction.user.mention}, given regex `{regex}` is too long.")
+                    return
+
+                if str(interaction.guild.id) in self.bot.name_filter_list and\
+                    len(self.bot.name_filter_list[str(interaction.guild.id)]) >= self.bot.maximum_regex[str(interaction.guild.id)]:
+                    await interaction.edit_original_response(content=f"{interaction.user.mention}, "\
+                        f"Your guild `{interaction.guild.name}` has maximum of name filter already "\
+                        f"`{str(self.bot.maximum_regex[str(interaction.guild.id)])}`."
+                    )
+                    await self.utils.log_to_channel(
+                        self.bot.config['discord']['log_channel'],
+                        f"Guild `{interaction.guild.name}` has maximum of name filter already "\
+                        f"`{str(self.bot.maximum_regex[str(interaction.guild.id)])}`."
                     )
                     await self.utils.log_to_channel(
                         self.bot.log_channel_guild[str(interaction.guild.id)],
-                        f"{interaction.user.mention} / `{interaction.user.id}`, please check if Bot has permission kick/ban."
+                        f"{interaction.user.name} / `{interaction.user.id}` executed `/namefilter add {regex}` "\
+                        f"but it reaches maximum regex already `{str(self.bot.maximum_regex[str(interaction.guild.id)])}`."
                     )
                     return
-            # End of check permission
-            if len(regex) < self.bot.config['discord']['minimum_regex_length']:
-                await interaction.edit_original_response(content=f"{interaction.user.mention}, given regex `{regex}` is too short.")
-                return
-            elif len(regex) > self.bot.config['discord']['maximum_regex_length']:
-                await interaction.edit_original_response(content=f"{interaction.user.mention}, given regex `{regex}` is too long.")
-                return
 
-            if str(interaction.guild.id) in self.bot.name_filter_list and\
-                len(self.bot.name_filter_list[str(interaction.guild.id)]) >= self.bot.maximum_regex[str(interaction.guild.id)]:
-                await interaction.edit_original_response(content=f"{interaction.user.mention}, "\
-                    f"Your guild `{interaction.guild.name}` has maximum of name filter already "\
-                    f"`{str(self.bot.maximum_regex[str(interaction.guild.id)])}`."
-                )
-                await self.utils.log_to_channel(
-                    self.bot.config['discord']['log_channel'],
-                    f"Guild `{interaction.guild.name}` has maximum of name filter already "\
-                    f"`{str(self.bot.maximum_regex[str(interaction.guild.id)])}`."
-                )
-                await self.utils.log_to_channel(
-                    self.bot.log_channel_guild[str(interaction.guild.id)],
-                    f"{interaction.user.name} / `{interaction.user.id}` executed `/namefilter add {regex}` "\
-                    f"but it reaches maximum regex already `{str(self.bot.maximum_regex[str(interaction.guild.id)])}`."
-                )
-                return
-
-            try:
-                if str(interaction.guild.id) in self.bot.name_filter_list_pending and\
-                    self.bot.name_filter_list_pending[str(interaction.guild.id)] and\
-                        len(self.bot.name_filter_list_pending[str(interaction.guild.id)]) > 0:
-                    old_regex = self.bot.name_filter_list_pending[str(interaction.guild.id)][0]
-                    await interaction.edit_original_response(content=f"{interaction.user.mention}, "\
-                        f"There is still pending `{old_regex}` to apply. Please apply with `/namefilter apply` first."
-                    )
-                    return
-            except Exception as e:
-                traceback.print_exc(file=sys.stdout)
-            try:
-                if check_regex(regex) is False:
-                    try:
-                        await self.utils.log_to_channel(
-                            self.bot.log_channel_guild[str(interaction.guild.id)],
-                            f"{interaction.user.name} / `{interaction.user.id}` executed `/namefilter {regex}`. Given regex `{regex}` is invalid."
+                try:
+                    if str(interaction.guild.id) in self.bot.name_filter_list_pending and\
+                        self.bot.name_filter_list_pending[str(interaction.guild.id)] and\
+                            len(self.bot.name_filter_list_pending[str(interaction.guild.id)]) > 0:
+                        old_regex = self.bot.name_filter_list_pending[str(interaction.guild.id)][0]
+                        await interaction.edit_original_response(content=f"{interaction.user.mention}, "\
+                            f"There is still pending `{old_regex}` to apply. Please apply with `/namefilter apply` first."
                         )
-                    except Exception as e:
-                        traceback.print_exc(file=sys.stdout)
-                    await interaction.edit_original_response(content=f"{interaction.user.mention}, given regex `{regex}` is invalid.")
-                    return
-                else:
-                    # add this guild key if not exist
-                    if str(interaction.guild.id) not in self.bot.name_filter_list_pending:
-                        self.bot.name_filter_list_pending[str(interaction.guild.id)] = []
-
-                    if str(interaction.guild.id) in self.bot.name_filter_list and\
-                        self.bot.name_filter_list[str(interaction.guild.id)] and\
-                            regex in self.bot.name_filter_list[str(interaction.guild.id)]:
-                            await interaction.edit_original_response(content=f"{interaction.user.mention}, given regex `{regex}` is already exist!")
-                            return
-                    else:
-                        adding = await self.utils.insert_new_regex(str(interaction.guild.id), regex, str(interaction.user.id))
-                        if adding is True:
-                            self.bot.name_filter_list_pending[str(interaction.guild.id)].append(regex)
-                            await interaction.edit_original_response(
-                                content=f"{interaction.user.mention}, added `{regex}` to pending list."\
-                                    " Please use `/namefilter apply` to save."
-                            )
+                        return
+                except Exception as e:
+                    traceback.print_exc(file=sys.stdout)
+                try:
+                    if check_regex(regex) is False:
+                        try:
                             await self.utils.log_to_channel(
                                 self.bot.log_channel_guild[str(interaction.guild.id)],
-                                f"{interaction.user.name} / `{interaction.user.id}` executed `/namefilter add {regex}`."
+                                f"{interaction.user.name} / `{interaction.user.id}` executed `/namefilter {regex}`. Given regex `{regex}` is invalid."
                             )
-                        else:
-                            await interaction.edit_original_response(content=f"{interaction.user.mention}, internal error during adding `{regex}`")
-            except Exception as e:
-                traceback.print_exc(file=sys.stdout)
+                        except Exception as e:
+                            traceback.print_exc(file=sys.stdout)
+                        await interaction.edit_original_response(content=f"{interaction.user.mention}, given regex `{regex}` is invalid.")
+                        return
+                    else:
+                        # add this guild key if not exist
+                        if str(interaction.guild.id) not in self.bot.name_filter_list_pending:
+                            self.bot.name_filter_list_pending[str(interaction.guild.id)] = []
 
-    @checks.has_permissions(manage_channels=True)
+                        if str(interaction.guild.id) in self.bot.name_filter_list and\
+                            self.bot.name_filter_list[str(interaction.guild.id)] and\
+                                regex in self.bot.name_filter_list[str(interaction.guild.id)]:
+                                await interaction.edit_original_response(content=f"{interaction.user.mention}, given regex `{regex}` is already exist!")
+                                return
+                        else:
+                            adding = await self.utils.insert_new_regex(str(interaction.guild.id), regex, str(interaction.user.id))
+                            if adding is True:
+                                self.bot.name_filter_list_pending[str(interaction.guild.id)].append(regex)
+                                await interaction.edit_original_response(
+                                    content=f"{interaction.user.mention}, added `{regex}` to pending list."\
+                                        " Please use `/namefilter apply` to save."
+                                )
+                                await self.utils.log_to_channel(
+                                    self.bot.log_channel_guild[str(interaction.guild.id)],
+                                    f"{interaction.user.name} / `{interaction.user.id}` executed `/namefilter add {regex}`."
+                                )
+                            else:
+                                await interaction.edit_original_response(content=f"{interaction.user.mention}, internal error during adding `{regex}`")
+                except Exception as e:
+                    traceback.print_exc(file=sys.stdout)
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+
+    @checks.has_permissions(ban_members=True)
     @namefilter_group.command(
         name="list",
         description="Get name filter list."
@@ -1160,7 +1171,7 @@ class Commanding(commands.Cog):
             is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
             if is_mod is False:
                 await interaction.edit_original_response(
-                    content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                    content=f"{interaction.user.mention}, permission denied."
                 )
                 return
         except Exception as e:
@@ -1225,7 +1236,7 @@ class Commanding(commands.Cog):
         else:
             await interaction.edit_original_response(content=f"{interaction.user.mention}, there is not any regex in this guild yet.")    
 
-    @checks.has_permissions(manage_channels=True)
+    @checks.has_permissions(ban_members=True)
     @app_commands.command(
         name="logchan",
         description="Set log channel."
@@ -1247,7 +1258,7 @@ class Commanding(commands.Cog):
             is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
             if is_mod is False:
                 await interaction.edit_original_response(
-                    content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                    content=f"{interaction.user.mention}, permission denied."
                 )
                 return
         except Exception as e:
@@ -1259,6 +1270,8 @@ class Commanding(commands.Cog):
             try:
                 await self.utils.insert_new_guild(str(interaction.guild.id), interaction.guild.name)
                 self.bot.log_channel_guild[str(interaction.guild.id)] = channel.id
+                # reload data
+                await self.utils.load_reload_bot_data()
             except Exception as e:
                 traceback.print_exc(file=sys.stdout)
                 await interaction.edit_original_response(content=f"{interaction.user.mention}, internal error, please report.")
@@ -1310,7 +1323,7 @@ class Commanding(commands.Cog):
                     f"`/logchan {channel.name}` and failed to update to DB."
                 )
 
-    @checks.has_permissions(manage_channels=True)
+    @checks.has_permissions(ban_members=True)
     @app_commands.command(
         name="scannick",
         description="Scan all users in the guild with regex matches."
@@ -1330,7 +1343,7 @@ class Commanding(commands.Cog):
             is_mod = await self.utils.is_moderator(interaction.guild, interaction.user.id)
             if is_mod is False:
                 await interaction.edit_original_response(
-                    content=f"{interaction.user.mention}, permission denied. Needed permission `manage_channels`"
+                    content=f"{interaction.user.mention}, permission denied."
                 )
                 return
         except Exception as e:
