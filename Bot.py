@@ -36,6 +36,7 @@ bot.log_channel_guild = {}
 
 bot.max_ignored_user = {}
 bot.max_ignored_role = {}
+bot.maximum_regex = {}
 
 # example:
 # bot.name_filter_list[guild_id] = ["(?i)bot$.", "(?i) bot$", "..."]
@@ -46,6 +47,7 @@ bot.max_ignored_role = {}
 
 # bot.max_ignored_user[guild_id] = 111
 # bot.max_ignored_role[guild_id] = 111
+# bot.maximum_regex[guild_id] = 111
 
 @bot.event
 async def on_ready() -> None:

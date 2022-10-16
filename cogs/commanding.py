@@ -987,18 +987,20 @@ class Commanding(commands.Cog):
                 return
 
             if str(interaction.guild.id) in self.bot.name_filter_list and\
-                len(self.bot.name_filter_list[str(interaction.guild.id)]) > self.bot.config['discord']['maximum_regex_per_guild_default']:
+                len(self.bot.name_filter_list[str(interaction.guild.id)]) >= self.bot.maximum_regex[str(interaction.guild.id)]:
                 await interaction.edit_original_response(content=f"{interaction.user.mention}, "\
-                    f"Your guild `{interaction.guild.name}` has maximum of name filter already."
+                    f"Your guild `{interaction.guild.name}` has maximum of name filter already "\
+                    f"`{str(self.bot.maximum_regex[str(interaction.guild.id)])}`."
                 )
                 await self.utils.log_to_channel(
                     self.bot.config['discord']['log_channel'],
-                    f"Guild `{interaction.guild.name}` has maximum of name filter already."
+                    f"Guild `{interaction.guild.name}` has maximum of name filter already "\
+                    f"`{str(self.bot.maximum_regex[str(interaction.guild.id)])}`."
                 )
                 await self.utils.log_to_channel(
                     self.bot.log_channel_guild[str(interaction.guild.id)],
                     f"{interaction.user.name} / `{interaction.user.id}` executed `/namefilter add {regex}` "\
-                    "but it reaches maximum regex already."
+                    f"but it reaches maximum regex already `{str(self.bot.maximum_regex[str(interaction.guild.id)])}`."
                 )
                 return
 
@@ -1038,7 +1040,10 @@ class Commanding(commands.Cog):
                         adding = await self.utils.insert_new_regex(str(interaction.guild.id), regex, str(interaction.user.id))
                         if adding is True:
                             self.bot.name_filter_list_pending[str(interaction.guild.id)].append(regex)
-                            await interaction.edit_original_response(content=f"{interaction.user.mention}, added `{regex}` to pending list.")
+                            await interaction.edit_original_response(
+                                content=f"{interaction.user.mention}, added `{regex}` to pending list."\
+                                    " Please use `/namefilter apply` to save."
+                            )
                             await self.utils.log_to_channel(
                                 self.bot.log_channel_guild[str(interaction.guild.id)],
                                 f"{interaction.user.name} / `{interaction.user.id}` executed `/namefilter add {regex}`."
@@ -1058,6 +1063,7 @@ class Commanding(commands.Cog):
         self,
         interaction: discord.Interaction,
     ) -> None:
+        """ /namefilter list """
         """ This is private """
         await interaction.response.send_message(f"{interaction.user.mention} namefilter loading...", ephemeral=True)
         if str(interaction.guild.id) not in self.bot.log_channel_guild or \
@@ -1106,8 +1112,11 @@ class Commanding(commands.Cog):
                     added_time,
                     status
                 ))
-            re_list_str = "\n".join(re_list)
-            await interaction.edit_original_response(content=f"{interaction.user.mention},\n {re_list_str}")  
+            re_list_str = "\n".join(re_list) if len(re_list) > 0 else "N/A"
+            await interaction.edit_original_response(
+                content=f"{interaction.user.mention},\n {re_list_str}\n"\
+                    f"Used: `{str(len(re_list))}`\nRemaining namefilter: `{str(self.bot.maximum_regex[str(interaction.guild.id)]-len(re_list))}`"
+            )  
             await self.utils.log_to_channel(
                 self.bot.log_channel_guild[str(interaction.guild.id)],
                 f"{interaction.user.name} / `{interaction.user.id}` requested `/namefilter list`"

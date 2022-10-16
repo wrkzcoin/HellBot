@@ -64,6 +64,7 @@ class Utils(commands.Cog):
                     self.bot.log_channel_guild = {}
                     self.bot.max_ignored_user = {}
                     self.bot.max_ignored_role = {}
+                    self.bot.maximum_regex = {}
                     if result:
                         for each in result:
                             if each['log_channel_id']:
@@ -72,6 +73,7 @@ class Utils(commands.Cog):
                                 self.bot.log_channel_guild[each['guild_id']] = None
                             self.bot.max_ignored_user[each['guild_id']] = each['max_ignored_users']
                             self.bot.max_ignored_role[each['guild_id']] = each['max_ignored_roles']
+                            self.bot.maximum_regex[each['guild_id']] = each['maximum_regex']
                     else:
                         self.bot.log_channel_guild[each['guild_id']] = None
                     # name_filters
@@ -124,15 +126,18 @@ class Utils(commands.Cog):
                     self.bot.log_channel_guild[guild_id] = None
                     self.bot.max_ignored_user[guild_id] = None
                     self.bot.max_ignored_role[guild_id] = None
+                    self.bot.maximum_regex[guild_id] = None
                     if result:
                         if result['log_channel_id']:
                             self.bot.log_channel_guild[guild_id] = int(result['log_channel_id'])
                             self.bot.max_ignored_user[guild_id] = result['max_ignored_users']
                             self.bot.max_ignored_role[guild_id] = result['max_ignored_roles']
+                            self.bot.maximum_regex[guild_id] = result['maximum_regex']
                         else:
                             self.bot.log_channel_guild[guild_id] = None
                             self.bot.max_ignored_user[guild_id] = None
                             self.bot.max_ignored_role[guild_id] = None
+                            self.bot.maximum_regex[guild_id] = None
                     # name_filters
                     sql = """ SELECT * FROM `name_filters` WHERE `guild_id`=%s """
                     await cur.execute(sql, guild_id)
