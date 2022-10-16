@@ -11,6 +11,7 @@
 <ul>
     <li><a href="#overview">Overview</a></li>
     <li><a href="#built-with">Built with</a></li>
+    <li><a href="#basic-commands">Basic Commands</a></li>
     <li><a href="#contributing">Contributing</a></li>
     <li><a href="#thanks-to">Thanks to</a></li>
 </ul>
@@ -26,6 +27,10 @@ To invite this Bot, use the [link here](https://invite-hellbot.wrkz.work/). This
 - [Python](https://www.python.org/)
 - [MariaDB](https://mariadb.com/)
 - [reg101](https://regex101.com/)
+
+## Basic Commands
+
+https://user-images.githubusercontent.com/40448869/196029309-3665e2c7-d88a-4786-8d78-3c80a8af916a.mp4
 
 ## Contributing
 
