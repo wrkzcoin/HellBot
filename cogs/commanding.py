@@ -10,6 +10,8 @@ from typing import List
 import traceback, sys
 import time
 import asyncio
+import unicodedata
+
 from cogs.utils import check_regex
 from cogs.utils import Utils
 
@@ -736,7 +738,8 @@ class Commanding(commands.Cog):
                     for each in get_members:
                         if (self.bot.config['discord']['regex_including_bot'] == 1 and each.bot is True) or\
                             each.bot is False:
-                            r = re.search(regex_test, each.display_name)
+                            name = unicodedata.normalize( 'NFKC', each.display_name)
+                            r = re.search(regex_test, name)
                             if r:
                                 found_user_id.append(each.id)
                                 found_username.append(each.display_name)
@@ -815,7 +818,8 @@ class Commanding(commands.Cog):
                     for each in regex_list:
                         try:
                             regex_test = r"{}".format(each)
-                            r = re.search(regex_test, name)
+                            check_name = unicodedata.normalize( 'NFKC', name)
+                            r = re.search(regex_test, check_name)
                             if r:
                                 match_list.append(f"✅ regex `{each}` macth: `{name}`")
                             else:

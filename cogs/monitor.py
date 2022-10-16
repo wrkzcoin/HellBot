@@ -4,6 +4,8 @@ import traceback, sys
 import time
 import asyncio
 import re
+import unicodedata
+
 from cogs.utils import check_regex
 from cogs.utils import Utils
 
@@ -127,7 +129,9 @@ class Events(commands.Cog):
                     for each in regex_list:
                         try:
                             regex_test = r"{}".format(each)
-                            r = re.search(regex_test, member.name)
+                            # https://stackoverflow.com/questions/62803325/how-to-convert-fancy-artistic-unicode-text-to-ascii
+                            name = unicodedata.normalize( 'NFKC', member.name)
+                            r = re.search(regex_test, name)
                             if r:
                                 if self.bot.config['discord']['is_testing'] == 1:
                                     await self.utils.log_to_channel(
@@ -190,7 +194,8 @@ class Events(commands.Cog):
                         for each in regex_list:
                             try:
                                 regex_test = r"{}".format(each)
-                                r = re.search(regex_test, after.name)
+                                name = unicodedata.normalize( 'NFKC', after.name)
+                                r = re.search(regex_test, name)
                                 if r:
                                     # Check if user can kick/ban, skip
                                     try:
@@ -286,7 +291,8 @@ class Events(commands.Cog):
                         for each in regex_list:
                             try:
                                 regex_test = r"{}".format(each)
-                                r = re.search(regex_test, after.nick)
+                                name = unicodedata.normalize( 'NFKC', after.nick)
+                                r = re.search(regex_test, name)
                                 if r:
                                     # Check if user can kick/ban, skip
                                     try:
