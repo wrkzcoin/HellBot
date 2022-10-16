@@ -116,8 +116,49 @@ class ConfirmApply(discord.ui.View):
                             except Exception as e:
                                 traceback.print_exc(file=sys.stdout)
                             # End of check user can kick/ban
+
+                            ignore = False
+                            # check if user in ignore list role
+                            get_user = interaction.guild.get_member(each)
+                            if len(get_user.roles) > 0:
+                                got_role = None
+                                for each in get_user.roles:
+                                    try:
+                                        if str(get_user.guild.id) in self.bot.exceptional_role_id and \
+                                            each.id in self.bot.exceptional_role_id[str(get_user.guild.id)]:
+                                            got_role = each
+                                            ignore = True
+                                            break
+                                    except Exception as e:
+                                        traceback.print_exc(file=sys.stdout)
+                                if ignore is True:
+                                    try:
+                                        if str(get_user.guild.id) in self.bot.log_channel_guild and \
+                                            self.bot.log_channel_guild[str(get_user.guild.id)] and get_user.bot is False:
+                                            await self.utils.log_to_channel(
+                                                self.bot.log_channel_guild[str(get_user.guild.id)],
+                                                f"[**ignore user**] `{each}` User `{get_user.name}` | {get_user.mention} | Having role `{got_role.name}`."
+                                            )
+                                    except Exception as e:
+                                        traceback.print_exc(file=sys.stdout)
+                                    continue
+                            # check if user in ignore list
                             try:
-                                get_user = interaction.guild.get_member(each)
+                                if str(get_user.guild.id) in self.bot.exceptional_user_name_id and \
+                                    get_user.id in self.bot.exceptional_user_name_id[str(get_user.guild.id)] and get_user.bot is False:
+                                    try:
+                                        if self.bot.log_channel_guild[str(get_user.guild.id)]:
+                                            await self.utils.log_to_channel(
+                                                self.bot.log_channel_guild[str(get_user.guild.id)],
+                                                f"[**ignore user**] `{each}` User `{get_user.name}` | {get_user.mention} | Ignored User ID `{get_user.id}`"
+                                            )
+                                    except Exception as e:
+                                        traceback.print_exc(file=sys.stdout)
+                                    continue
+                            except Exception as e:
+                                traceback.print_exc(file=sys.stdout)
+                            # end of check if user in ignore list
+                            try:
                                 await interaction.guild.kick(
                                     user=get_user,
                                     reason=f'You are kicked from `{interaction.guild.name}`. Nick name matches `{regex}`'
@@ -803,6 +844,28 @@ class Commanding(commands.Cog):
                     )
 
                     for each in get_members:
+                        ignore = False
+                        # check if user in ignore list role
+                        if len(each.roles) > 0:
+                            for each in each.roles:
+                                try:
+                                    if str(interaction.guild.id) in self.bot.exceptional_role_id and \
+                                        each.id in self.bot.exceptional_role_id[str(interaction.guild.id)]:
+                                        ignore = True
+                                        break
+                                except Exception as e:
+                                    traceback.print_exc(file=sys.stdout)
+                            if ignore is True:
+                                continue
+                        # check if user in ignore list
+                        try:
+                            if str(interaction.guild.id) in self.bot.exceptional_user_name_id and \
+                                each.id in self.bot.exceptional_user_name_id[str(interaction.guild.id)] and each.bot is False:
+                                continue
+                        except Exception as e:
+                            traceback.print_exc(file=sys.stdout)
+                        # end of check if user in ignore list
+
                         if (self.bot.config['discord']['regex_including_bot'] == 1 and each.bot is True) or\
                             each.bot is False:
                             name = unicodedata.normalize( 'NFKC', each.display_name)
@@ -1382,13 +1445,18 @@ class Commanding(commands.Cog):
                     for each in get_members:
                         if (self.bot.config['discord']['regex_including_bot'] == 1 and each.bot is True) or\
                             each.bot is False:
-                            r = re.search(regex_test, each.display_name)
+                            r = re.search(regex_test, str(each))
                             if r:
                                 found_user_id.append(each.id)
-                                found_username.append(each.display_name)
+                                found_username.append(str(each))
                                 found_mention.append(each.mention)
-                        
-                    if len(found_user_id) > 0:
+                    if len(found_user_id) > 50:
+                        all_user = ", ".join(found_mention[0:49])
+                        await interaction.edit_original_response(
+                            content=f"{interaction.user.mention}, found {str(len(found_user_id))} "\
+                                f"user with `{regex}`.\n{all_user} and other {str(len(found_user_id)-50)}"
+                            )
+                    elif len(found_user_id) > 0:
                         all_user = ", ".join(found_mention)
                         await interaction.edit_original_response(
                             content=f"{interaction.user.mention}, found {str(len(found_user_id))} "\
