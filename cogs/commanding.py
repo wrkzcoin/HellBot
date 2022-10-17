@@ -1381,6 +1381,7 @@ class Commanding(commands.Cog):
                     f"`{interaction.guild.name} / {interaction.guild.id}` to "\
                     f"{channel.name}."
                 )
+                await interaction.edit_original_response(content=f"{interaction.user.mention}, log channel set to {channel.mention}.")
                 await self.utils.load_reload_bot_data()
             except discord.errors.Forbidden:
                 await interaction.edit_original_response(content=f"{interaction.user.mention}, error. Maybe I don't have access to that channel.")

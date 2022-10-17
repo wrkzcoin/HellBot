@@ -147,6 +147,8 @@ class Utils(commands.Cog):
                 async with conn.cursor() as cur:
                     sql = """ INSERT INTO `guild_list` (`guild_id`, `guild_name`, `guild_joined_date`)
                     VALUES (%s, %s, %s)
+                    ON DUPLICATE KEY UPDATE 
+                    `guild_joined_date`=VALUES(`guild_joined_date`)
                     """
                     await cur.execute(sql, (guild_id, guild_name, int(time.time())))
                     await conn.commit()
@@ -315,6 +317,7 @@ class Utils(commands.Cog):
             await self.open_connection()
             async with self.db_pool.acquire() as conn:
                 async with conn.cursor() as cur:
+                    has_data_purge = False
                     sql = """
                     SELECT * FROM `guild_list` WHERE `guild_id`=%s LIMIT 1
                     """
@@ -331,10 +334,13 @@ class Utils(commands.Cog):
                         ))
                         await conn.commit()
                     # name_filter_list
+                    has_namefilter = False
                     sql = """ SELECT * FROM `name_filters` WHERE `guild_id`=%s """
                     await cur.execute(sql, guild_id)
                     result = await cur.fetchall()
                     if result and len(result) > 0 :
+                        has_namefilter = True
+                        has_data_purge = True
                         sql = """ INSERT INTO `name_filters_deleted` 
                         (`guild_id`, `regex`, `added_by`, `added_date`, `is_active`, `deleted_by`, `deleted_date`)
                         VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -347,11 +353,15 @@ class Utils(commands.Cog):
                             ))
                         if len(data_rows) > 0:
                             await cur.executemany(sql, data_rows)
+                            await conn.commit()
                     # exceptional_users
+                    has_ignore_users = False
                     sql = """ SELECT * FROM `exceptional_users` WHERE `guild_id`=%s """
                     await cur.execute(sql, guild_id)
                     result = await cur.fetchall()
                     if result and len(result) > 0:
+                        has_ignore_users = True
+                        has_data_purge = True
                         sql = """ INSERT INTO `exceptional_users_deleted` 
                         (`guild_id`, `user_id`, `added_by`, `added_date`, `deleted_by`, `deleted_date`)
                         VALUES (%s, %s, %s, %s, %s, %s)
@@ -364,11 +374,15 @@ class Utils(commands.Cog):
                             ))
                         if len(data_rows) > 0:
                             await cur.executemany(sql, data_rows)
+                            await conn.commit()
                     # exceptional_roles
+                    has_ignore_roles = False
                     sql = """ SELECT * FROM `exceptional_roles` WHERE `guild_id`=%s """
                     await cur.execute(sql, guild_id)
                     result = await cur.fetchall()
                     if result and len(result) > 0:
+                        has_ignore_roles = True
+                        has_data_purge = True
                         sql = """ INSERT INTO `exceptional_roles_deleted` 
                         (`guild_id`, `role_id`, `added_by`, `added_date`, `deleted_by`, `deleted_date`)
                         VALUES (%s, %s, %s, %s, %s, %s)
@@ -381,6 +395,61 @@ class Utils(commands.Cog):
                             ))
                         if len(data_rows) > 0:
                             await cur.executemany(sql, data_rows)
+                            await conn.commit()
+
+                    # message_filters
+                    has_messagefilter = False
+                    sql = """ SELECT * FROM `message_filters` WHERE `guild_id`=%s """
+                    await cur.execute(sql, guild_id)
+                    result = await cur.fetchall()
+                    if result and len(result) > 0 :
+                        has_messagefilter = True
+                        has_data_purge = True
+                        sql = """ INSERT INTO `message_filters_deleted` 
+                        (`guild_id`, `content`, `added_by`, `added_date`, `deleted_by`, `deleted_date`)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        """
+                        data_rows = []
+                        for each in result:
+                            data_rows.append((
+                                each['guild_id'], each['content'], each['added_by'], each['added_date'], 
+                                "LEFT", int(time.time())
+                            ))
+                        if len(data_rows) > 0:
+                            await cur.executemany(sql, data_rows)
+                            await conn.commit()
+
+                    params = []
+                    sql = """ DELETE FROM `guild_list` WHERE `guild_id`=%s;
+                    """
+                    params.append(guild_id)
+                    if has_data_purge is True:
+                        # delete name_filters
+                        if has_namefilter is True:
+                            sql += """ DELETE FROM `name_filters` WHERE `guild_id`=%s;
+                                """
+                            params.append(guild_id)
+
+                        # delete exceptional_users
+                        if has_ignore_users is True:
+                            sql += """ DELETE FROM `exceptional_users` WHERE `guild_id`=%s;
+                                """
+                            params.append(guild_id)
+
+                        # delete exceptional_roles
+                        if has_ignore_roles is True:
+                            sql += """ DELETE FROM `exceptional_roles` WHERE `guild_id`=%s;
+                                """
+                            params.append(guild_id)
+
+                        # delete message_filters
+                        if has_messagefilter is True:
+                            sql += """ DELETE FROM `message_filters` WHERE `guild_id`=%s;
+                                """
+                            params.append(guild_id)
+                        # all now
+                    await cur.execute(sql, tuple(params))
+                    await conn.commit()
                     return True
         except Exception:
             traceback.print_exc(file=sys.stdout)

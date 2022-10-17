@@ -139,17 +139,23 @@ class Events(commands.Cog):
         )
         try:
             await self.utils.delete_guild(str(guild.id))
-            del self.bot.name_filter_list[str(guild.id)]
-            del self.bot.name_filter_list_pending[str(guild.id)]
-            del self.bot.exceptional_role_id[str(guild.id)]
-            del self.bot.exceptional_user_name_id[str(guild.id)]
-            del self.bot.log_channel_guild[str(guild.id)]
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
             await self.utils.log_to_channel(
                 self.bot.config['discord']['log_channel'],
                 f"Failed to delete guild "\
                 f"`{guild.name} / {guild.id}`"
+            )
+        # reload data
+        await self.utils.load_reload_bot_data()
+
+    @commands.Cog.listener()
+    async def on_member_remove(self, member):
+        if str(member.guild.id) in self.bot.log_channel_guild and self.bot.log_channel_guild[str(member.guild.id)] \
+            and member != self.bot.user:
+            await self.utils.log_to_channel(
+                self.bot.log_channel_guild[str(member.guild.id)],
+                f"User `{member.name}` | {member.mention} left guild!"
             )
 
     @commands.Cog.listener()
