@@ -5,6 +5,7 @@ import traceback, sys
 import aiomysql
 from aiomysql.cursors import DictCursor
 import time
+import hashlib
 
 def check_regex(given: str):
     try:
@@ -65,6 +66,7 @@ class Utils(commands.Cog):
                     self.bot.max_ignored_user = {}
                     self.bot.max_ignored_role = {}
                     self.bot.maximum_regex = {}
+                    self.bot.enable_message_filter = []
                     if result:
                         for each in result:
                             if each['log_channel_id']:
@@ -74,6 +76,8 @@ class Utils(commands.Cog):
                             self.bot.max_ignored_user[each['guild_id']] = each['max_ignored_users']
                             self.bot.max_ignored_role[each['guild_id']] = each['max_ignored_roles']
                             self.bot.maximum_regex[each['guild_id']] = each['maximum_regex']
+                            if each['enable_message_filter'] == 1:
+                                self.bot.enable_message_filter.append(int(each['guild_id']))
                     else:
                         self.bot.log_channel_guild[each['guild_id']] = None
                     # name_filters
@@ -93,65 +97,32 @@ class Utils(commands.Cog):
                                 self.bot.name_filter_list[each['guild_id']].append(each['regex'])
                             elif each['is_active'] == 0:
                                 self.bot.name_filter_list_pending[each['guild_id']].append(each['regex'])
+                    # message filter
+                    sql = """ SELECT * FROM `message_filters` """
+                    await cur.execute(sql, )
+                    result = await cur.fetchall()
+                    self.bot.message_filters = {}
+                    if result:
+                        for each in result:
+                            if each['guild_id'] not in self.bot.message_filters:
+                                self.bot.message_filters[each['guild_id']] = []
+                            self.bot.message_filters[each['guild_id']].append(each['content'])
+                    # message filter template
+                    sql = """ SELECT sha1(`content`) AS hashtext, `message_filters_template`.* 
+                    FROM `message_filters_template` """
+                    await cur.execute(sql, )
+                    result = await cur.fetchall()
+                    self.bot.message_filter_templates = []
+                    self.bot.message_filter_templates_kv = {}
+                    if result:
+                        for each in result:
+                            if each['is_active'] == 1:
+                                self.bot.message_filter_templates.append(each['content'])
+                                self.bot.message_filter_templates_kv[each['hashtext']] = each
                     return True
         except Exception:
             traceback.print_exc(file=sys.stdout)
         return False
-
-    async def load_reload_bot_data_by_guild_id(self, guild_id: str):
-        try:
-            await self.open_connection()
-            async with self.db_pool.acquire() as conn:
-                async with conn.cursor() as cur:
-                    # exceptional_roles
-                    sql = """ SELECT * FROM `exceptional_roles` WHERE `guild_id`=%s """
-                    await cur.execute(sql, guild_id)
-                    result = await cur.fetchall()
-                    self.bot.exceptional_role_id[each['guild_id']] = []
-                    if result:
-                        for each in result:
-                            self.bot.exceptional_role_id[each['guild_id']].append(int(each['role_id']))
-                    # exceptional_users
-                    sql = """ SELECT * FROM `exceptional_users` WHERE `guild_id`=%s """
-                    await cur.execute(sql, guild_id)
-                    result = await cur.fetchall()
-                    self.bot.exceptional_user_name_id[each['guild_id']] = []
-                    if result:
-                        for each in result:
-                            self.bot.exceptional_user_name_id[each['guild_id']].append(int(each['user_id']))
-                    # guild_list
-                    sql = """ SELECT * FROM `guild_list` WHERE `guild_id`=%s LIMIT 1 """
-                    await cur.execute(sql, guild_id)
-                    result = await cur.fetchone()
-                    self.bot.log_channel_guild[guild_id] = None
-                    self.bot.max_ignored_user[guild_id] = None
-                    self.bot.max_ignored_role[guild_id] = None
-                    self.bot.maximum_regex[guild_id] = None
-                    if result:
-                        if result['log_channel_id']:
-                            self.bot.log_channel_guild[guild_id] = int(result['log_channel_id'])
-                            self.bot.max_ignored_user[guild_id] = result['max_ignored_users']
-                            self.bot.max_ignored_role[guild_id] = result['max_ignored_roles']
-                            self.bot.maximum_regex[guild_id] = result['maximum_regex']
-                        else:
-                            self.bot.log_channel_guild[guild_id] = None
-                            self.bot.max_ignored_user[guild_id] = None
-                            self.bot.max_ignored_role[guild_id] = None
-                            self.bot.maximum_regex[guild_id] = None
-                    # name_filters
-                    sql = """ SELECT * FROM `name_filters` WHERE `guild_id`=%s """
-                    await cur.execute(sql, guild_id)
-                    result = await cur.fetchall()
-                    self.bot.name_filter_list[each['guild_id']] = []
-                    self.bot.name_filter_list_pending[each['guild_id']] = []
-                    if result:
-                        for each in result:
-                            if each['is_active'] == 1:
-                                self.bot.name_filter_list[each['guild_id']].append(each['regex'])
-                            elif each['is_active'] == 0:
-                                self.bot.name_filter_list_pending[each['guild_id']].append(each['regex'])
-        except Exception:
-            traceback.print_exc(file=sys.stdout)
 
     async def set_log_channel(self, guild_id: str, channel_id: str, set_by: str):
         try:
@@ -476,6 +447,139 @@ class Utils(commands.Cog):
             traceback.print_exc(file=sys.stdout)
         return False
 
+    async def update_message_filters_template_trigger(self, msg_tpl_id: int):
+        try:
+            await self.open_connection()
+            async with self.db_pool.acquire() as conn:
+                async with conn.cursor() as cur:
+                    sql = """ UPDATE `message_filters_template` 
+                    SET `triggered`=`triggered`+1 WHERE `msg_tpl_id`=%s
+                    LIMIT 1
+                    """
+                    await cur.execute(sql, msg_tpl_id)
+                    await conn.commit()
+                    return True
+        except Exception:
+            traceback.print_exc(file=sys.stdout)
+        return False
+
+    async def insert_new_msg_filter(self, guild_id: str, content: str, added_by: str):
+        try:
+            await self.open_connection()
+            async with self.db_pool.acquire() as conn:
+                async with conn.cursor() as cur:
+                    sql = """ INSERT INTO `message_filters` (`guild_id`, `content`, `added_by`, `added_date`)
+                    VALUES (%s, %s, %s, %s)
+                    """
+                    await cur.execute(sql, (guild_id, content, added_by, int(time.time())))
+                    await conn.commit()
+                    return True
+        except Exception:
+            traceback.print_exc(file=sys.stdout)
+        return False
+
+    async def update_guild_msg_filter_on_off(self, guild_id: int, value: int):
+        try:
+            await self.open_connection()
+            async with self.db_pool.acquire() as conn:
+                async with conn.cursor() as cur:
+                    sql = """ UPDATE `guild_list` 
+                    SET `enable_message_filter`=%s
+                    WHERE `guild_id`=%s
+                    LIMIT 1
+                    """
+                    await cur.execute(sql, (value, guild_id))
+                    await conn.commit()
+                    return True
+        except Exception:
+            traceback.print_exc(file=sys.stdout)
+        return False
+
+    async def get_msg_filter_list(self, guild_id: str):
+        try:
+            await self.open_connection()
+            async with self.db_pool.acquire() as conn:
+                async with conn.cursor() as cur:
+                    sql = """ SELECT * FROM `message_filters` 
+                    WHERE `guild_id`=%s
+                    """
+                    await cur.execute(sql, guild_id)
+                    result = await cur.fetchall()
+                    if result:
+                        return result
+        except Exception:
+            traceback.print_exc(file=sys.stdout)
+        return []
+
+    async def get_msg_filter_list_search(
+        self, guild_id: str, like: str, limit: int = 8
+    ):
+        try:
+            await self.open_connection()
+            async with self.db_pool.acquire() as conn:
+                async with conn.cursor() as cur:
+                    sql = """ SELECT * FROM `message_filters` 
+                    WHERE `guild_id`=%s AND `content` LIKE %s LIMIT """+str(limit)
+                    await cur.execute(sql, (guild_id, "%" + like + "%"))
+                    result = await cur.fetchall()
+                    if result:
+                        return result
+        except Exception:
+            traceback.print_exc(file=sys.stdout)
+        return []
+
+    async def delete_msg_filter(
+        self, guild_id: str, message_filters_id: int, deleted_by: str
+    ):
+        try:
+            await self.open_connection()
+            async with self.db_pool.acquire() as conn:
+                async with conn.cursor() as cur:
+                    sql = """ SELECT * FROM `message_filters` 
+                    WHERE `guild_id`=%s AND `message_filters_id`=%s
+                    LIMIT 1
+                    """
+                    await cur.execute(sql, (guild_id, message_filters_id))
+                    result = await cur.fetchone()
+                    if result:
+                        sql = """ INSERT INTO `message_filters_deleted` 
+                        (`guild_id`, `content`, `added_by`, `added_date`, `deleted_by`, `deleted_date`)
+                        VALUES (%s, %s, %s, %s, %s, %s);
+
+                        DELETE FROM `message_filters`
+                        WHERE `guild_id`=%s AND `message_filters_id`=%s;
+                        """
+                        await cur.execute(sql, (
+                            guild_id, result['content'], result['added_by'],
+                            result['added_date'], deleted_by, int(time.time()),
+                            guild_id, message_filters_id
+                        ))
+                        await conn.commit()
+                        return True
+        except Exception:
+            traceback.print_exc(file=sys.stdout)
+        return False
+    
+    async def add_deleted_message_log(
+        self, message_content: str, matched_content: str, ratio: float, guild_id: str, user_id: str
+    ):
+        try:
+            await self.open_connection()
+            async with self.db_pool.acquire() as conn:
+                async with conn.cursor() as cur:
+                    sql = """ INSERT INTO `log_deleted_message` 
+                    (`message_content`, `matched_content`, `ratio`, `guild_id`, `author_id`, `inserted_time`)
+                    VALUES (%s, %s, %s, %s, %s, %s);
+                    """
+                    await cur.execute(sql, (
+                        message_content, matched_content, ratio, guild_id, user_id, int(time.time())
+                    ))
+                    await conn.commit()
+                    return True
+        except Exception:
+            traceback.print_exc(file=sys.stdout)
+        return False
+
     async def log_to_channel(self, channel_id: int, content: str) -> None:
         try:
             channel = self.bot.get_channel(channel_id)
@@ -487,7 +591,7 @@ class Utils(commands.Cog):
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
 
-    async def bot_can_kick_ban(self, guild):
+    async def get_bot_perm(self, guild):
         try:
             get_bot_user = guild.get_member(self.bot.user.id)
             return dict(get_bot_user.guild_permissions)
@@ -502,6 +606,17 @@ class Utils(commands.Cog):
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
         return None
+
+    async def is_managed_message(self, guild, user_id):
+        try:
+            get_user = guild.get_member(user_id)
+            check_perm = dict(get_user.guild_permissions)
+            if check_perm and (check_perm['manage_channels'] is True) or \
+                (check_perm['manage_messages'] is True):
+                return True
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+        return False
 
     async def is_moderator(self, guild, user_id):
         """

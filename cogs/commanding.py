@@ -11,6 +11,7 @@ import traceback, sys
 import time
 import asyncio
 import unicodedata
+from rapidfuzz import fuzz
 
 from cogs.utils import check_regex
 from cogs.utils import Utils
@@ -259,7 +260,7 @@ class Commanding(commands.Cog):
                 )
             else:
                 # Check permission
-                check_perm = await self.utils.bot_can_kick_ban(interaction.guild)
+                check_perm = await self.utils.get_bot_perm(interaction.guild)
                 if check_perm is None:
                     await interaction.edit_original_response(
                         content=f"{interaction.user.mention}, internal error. Check again later!"
@@ -342,7 +343,7 @@ class Commanding(commands.Cog):
                 await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
             else:
                 # Check permission
-                check_perm = await self.utils.bot_can_kick_ban(interaction.guild)
+                check_perm = await self.utils.get_bot_perm(interaction.guild)
                 if check_perm is None:
                     await interaction.edit_original_response(
                         content=f"{interaction.user.mention}, internal error. Check again later!"
@@ -455,7 +456,7 @@ class Commanding(commands.Cog):
                 await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
             else:
                 # Check permission
-                check_perm = await self.utils.bot_can_kick_ban(interaction.guild)
+                check_perm = await self.utils.get_bot_perm(interaction.guild)
                 if check_perm is None:
                     await interaction.edit_original_response(
                         content=f"{interaction.user.mention}, internal error. Check again later!"
@@ -561,7 +562,7 @@ class Commanding(commands.Cog):
                 return
             else:
                 # Check permission
-                check_perm = await self.utils.bot_can_kick_ban(interaction.guild)
+                check_perm = await self.utils.get_bot_perm(interaction.guild)
                 if check_perm is None:
                     await interaction.edit_original_response(
                         content=f"{interaction.user.mention}, internal error. Check again later!"
@@ -674,7 +675,7 @@ class Commanding(commands.Cog):
                 return
             else:
                 # Check permission
-                check_perm = await self.utils.bot_can_kick_ban(interaction.guild)
+                check_perm = await self.utils.get_bot_perm(interaction.guild)
                 if check_perm is None:
                     await interaction.edit_original_response(
                         content=f"{interaction.user.mention}, internal error. Check again later!"
@@ -780,7 +781,7 @@ class Commanding(commands.Cog):
             return
         else:
             # Check permission
-            check_perm = await self.utils.bot_can_kick_ban(interaction.guild)
+            check_perm = await self.utils.get_bot_perm(interaction.guild)
             if check_perm is None:
                 await interaction.edit_original_response(
                     content=f"{interaction.user.mention}, internal error. Check again later!"
@@ -935,7 +936,7 @@ class Commanding(commands.Cog):
             return
         else:
             # Check permission
-            check_perm = await self.utils.bot_can_kick_ban(interaction.guild)
+            check_perm = await self.utils.get_bot_perm(interaction.guild)
             if check_perm is None:
                 await interaction.edit_original_response(
                     content=f"{interaction.user.mention}, internal error. Check again later!"
@@ -1021,7 +1022,7 @@ class Commanding(commands.Cog):
             return
         else:
             # Check permission
-            check_perm = await self.utils.bot_can_kick_ban(interaction.guild)
+            check_perm = await self.utils.get_bot_perm(interaction.guild)
             if check_perm is None:
                 await interaction.edit_original_response(
                     content=f"{interaction.user.mention}, internal error. Check again later!"
@@ -1128,7 +1129,7 @@ class Commanding(commands.Cog):
                 return
             else:
                 # Check permission
-                check_perm = await self.utils.bot_can_kick_ban(interaction.guild)
+                check_perm = await self.utils.get_bot_perm(interaction.guild)
                 if check_perm is None:
                     await interaction.edit_original_response(
                         content=f"{interaction.user.mention}, internal error. Check again later!"
@@ -1257,7 +1258,7 @@ class Commanding(commands.Cog):
             return
 
         # Check permission
-        check_perm = await self.utils.bot_can_kick_ban(interaction.guild)
+        check_perm = await self.utils.get_bot_perm(interaction.guild)
         if check_perm is None:
             await interaction.edit_original_response(
                 content=f"{interaction.user.mention}, internal error. Check again later!"
@@ -1476,6 +1477,394 @@ class Commanding(commands.Cog):
                         await interaction.edit_original_response(content=f"{interaction.user.mention}, found 0 user with `{regex}`.")
                 except Exception as e:
                     traceback.print_exc(file=sys.stdout)
+
+    messagefilter_group = app_commands.Group(name="messagefilter", guild_only=True, description="message filter management.")
+
+    @checks.has_permissions(manage_messages=True)
+    @messagefilter_group.command(
+        name="add",
+        description="Add new message filter."
+    )
+    async def command_messagefilter_add(
+        self,
+        interaction: discord.Interaction,
+        content: str
+    ) -> None:
+        """ /messagefilter add """
+        """ This is private """
+        content = content.strip()
+        await interaction.response.send_message(f"{interaction.user.mention} messagefilter loading...", ephemeral=True)
+        # re-check perm
+        try:
+            is_mod = await self.utils.is_managed_message(interaction.guild, interaction.user.id)
+            if is_mod is False:
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, permission denied."
+                )
+                return
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+        # end of re-check perm
+        if str(interaction.guild.id) not in self.bot.log_channel_guild or \
+            self.bot.log_channel_guild[str(interaction.guild.id)] is None:
+            await interaction.edit_original_response(
+                content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`."
+            )
+            return
+        try:
+            if interaction.guild.id not in self.bot.enable_message_filter:
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, your guild didn't enable `messagefilter`. Do it with `/messagefilter on`."
+                )
+                return
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+        try:
+            if len(content) < 10 or len(content) > 1000:
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, the message content is too short or too long."
+                )
+                return
+            else:
+                if str(interaction.guild.id) in self.bot.message_filters and \
+                    len(self.bot.message_filters[str(interaction.guild.id)]) > 0:
+                    # Check if similiar to any added
+                    matches = False
+                    matched_text = None
+                    for each in self.bot.message_filters[str(interaction.guild.id)]:
+                        compare = fuzz.ratio(content, each)
+                        if (len(content) > 40 and compare >= 80) or \
+                            (len(content) <= 40 and compare >= 90):
+                            matches = True
+                            matched_text = each
+                            break
+                    if matches is True:
+                        await interaction.edit_original_response(
+                            content=f"{interaction.user.mention}, you new content filter is similiar to below:```{matched_text}```"
+                        )
+                        return
+                    else:
+                        if len(self.bot.message_filters[str(interaction.guild.id)]) >= 30:
+                            await interaction.edit_original_response(
+                                content=f"{interaction.user.mention}, your guild already reached max message filter."
+                            )
+                            return
+                        else:
+                            adding = await self.utils.insert_new_msg_filter(
+                                str(interaction.guild.id), content, str(interaction.user.id)
+                            )
+                            if adding is True:
+                                await interaction.edit_original_response(
+                                    content=f"{interaction.user.mention}, successfully added a new message filter."
+                                )
+                                try:
+                                    await self.utils.log_to_channel(
+                                        self.bot.log_channel_guild[str(interaction.guild.id)],
+                                        f"{interaction.user.name} / `{interaction.user.id}` added a new message filter:"\
+                                        f"```{content}```"
+                                    )
+                                except Exception as e:
+                                    traceback.print_exc(file=sys.stdout)
+                else:
+                    adding = await self.utils.insert_new_msg_filter(
+                        str(interaction.guild.id), content, str(interaction.user.id)
+                    )
+                    if adding is True:
+                        await interaction.edit_original_response(
+                            content=f"{interaction.user.mention}, successfully added a new message filter."
+                        )
+                        try:
+                            await self.utils.log_to_channel(
+                                self.bot.log_channel_guild[str(interaction.guild.id)],
+                                f"{interaction.user.name} / `{interaction.user.id}` added a new message filter:"\
+                                f"```{content}```"
+                            )
+                        except Exception as e:
+                            traceback.print_exc(file=sys.stdout)
+                        # reload data
+                await self.utils.load_reload_bot_data()
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+
+    @checks.has_permissions(manage_messages=True)
+    @messagefilter_group.command(
+        name="list",
+        description="List active message filter."
+    )
+    async def command_messagefilter_list(
+        self,
+        interaction: discord.Interaction
+    ) -> None:
+        """ /messagefilter list """
+        """ This is private """
+        await interaction.response.send_message(f"{interaction.user.mention} messagefilter loading...", ephemeral=True)
+        # re-check perm
+        try:
+            is_mod = await self.utils.is_managed_message(interaction.guild, interaction.user.id)
+            if is_mod is False:
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, permission denied."
+                )
+                return
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+        # end of re-check perm
+
+        if str(interaction.guild.id) not in self.bot.log_channel_guild or \
+            self.bot.log_channel_guild[str(interaction.guild.id)] is None:
+            await interaction.edit_original_response(
+                content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`."
+            )
+            return
+        try:
+            if interaction.guild.id not in self.bot.enable_message_filter:
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, your guild didn't enable `messagefilter`. Do it with `/messagefilter on`."
+                )
+                return
+            else:
+                if str(interaction.guild.id) not in self.bot.message_filters or \
+                    len(self.bot.message_filters[str(interaction.guild.id)]) == 0:
+                    await interaction.edit_original_response(
+                        content=f"{interaction.user.mention}, your guild doesn't have any message contents to filter yet."\
+                            " You can add by `/messagefilter add`"
+                    )
+                    return
+                else:
+                    get_msg_filter = await self.utils.get_msg_filter_list(str(interaction.guild.id))
+                    if len(get_msg_filter) > 0:
+                        list_msg_filters = []
+                        for each in get_msg_filter:
+                            content = each['content'][0:30] + "..." if len(each['content']) > 31 else each['content']
+                            list_msg_filters.append("{})=> {}".format(each['message_filters_id'], content))
+                        list_msg_filters_str = "\n".join(list_msg_filters)
+                        await interaction.edit_original_response(
+                            content=f"{interaction.user.mention}, filter list:"\
+                                f"```{list_msg_filters_str}```"
+                        )
+                    else:
+                        await interaction.edit_original_response(
+                            content=f"{interaction.user.mention}, your guild doesn't have any message contents to filter yet."\
+                                " You can add by `/messagefilter add`"
+                        )
+                    return
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+
+    @checks.has_permissions(manage_messages=True)
+    @messagefilter_group.command(
+        name="on",
+        description="Turn message filter on."
+    )
+    async def command_messagefilter_turn_on(
+        self,
+        interaction: discord.Interaction
+    ) -> None:
+        """ /messagefilter on """
+        """ This is private """
+        await interaction.response.send_message(f"{interaction.user.mention} messagefilter loading...", ephemeral=True)
+        # re-check perm
+        try:
+            is_mod = await self.utils.is_managed_message(interaction.guild, interaction.user.id)
+            if is_mod is False:
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, permission denied."
+                )
+                return
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+        # end of re-check perm
+        if str(interaction.guild.id) not in self.bot.log_channel_guild or \
+            self.bot.log_channel_guild[str(interaction.guild.id)] is None:
+            await interaction.edit_original_response(
+                content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`."
+            )
+            return
+        try:
+            if interaction.guild.id in self.bot.enable_message_filter:
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, your guild already have `messagefilter` ON."
+                )
+                return
+            else:
+                updating = await self.utils.update_guild_msg_filter_on_off(
+                    str(interaction.guild.id), 1
+                )
+                if updating:
+                    await interaction.edit_original_response(
+                        content=f"{interaction.user.mention}, successfully set `messagefilter` ON."
+                    )
+                    self.bot.enable_message_filter.append(interaction.guild.id)
+                    try:
+                        await self.utils.log_to_channel(
+                            self.bot.log_channel_guild[str(interaction.guild.id)],
+                            f"{interaction.user.name} / `{interaction.user.id}` turn message filter ON."
+                        )
+                    except Exception as e:
+                        traceback.print_exc(file=sys.stdout)
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+    
+    @checks.has_permissions(manage_messages=True)
+    @messagefilter_group.command(
+        name="off",
+        description="Turn message filter on."
+    )
+    async def command_messagefilter_turn_off(
+        self,
+        interaction: discord.Interaction
+    ) -> None:
+        """ /messagefilter off """
+        """ This is private """
+        await interaction.response.send_message(f"{interaction.user.mention} messagefilter loading...", ephemeral=True)
+        # re-check perm
+        try:
+            is_mod = await self.utils.is_managed_message(interaction.guild, interaction.user.id)
+            if is_mod is False:
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, permission denied."
+                )
+                return
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+        # end of re-check perm
+        if str(interaction.guild.id) not in self.bot.log_channel_guild or \
+            self.bot.log_channel_guild[str(interaction.guild.id)] is None:
+            await interaction.edit_original_response(
+                content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`."
+            )
+            return
+        try:
+            if interaction.guild.id not in self.bot.enable_message_filter:
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, your guild `messagefilter` is currently OFF."
+                )
+                return
+            else:
+                updating = await self.utils.update_guild_msg_filter_on_off(
+                    str(interaction.guild.id), 0
+                )
+                if updating:
+                    await interaction.edit_original_response(
+                        content=f"{interaction.user.mention}, successfully set `messagefilter` OFF."
+                    )
+                    if interaction.guild.id in self.bot.enable_message_filter:
+                        self.bot.enable_message_filter.remove(interaction.guild.id)
+                    try:
+                        await self.utils.log_to_channel(
+                            self.bot.log_channel_guild[str(interaction.guild.id)],
+                            f"{interaction.user.name} / `{interaction.user.id}` turn message filter OFF."
+                        )
+                    except Exception as e:
+                        traceback.print_exc(file=sys.stdout)
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+
+    @checks.has_permissions(manage_messages=True)
+    @messagefilter_group.command(
+        name="del",
+        description="Delete a message filter."
+    )
+    async def command_messagefilter_delete_message_filter(
+        self,
+        interaction: discord.Interaction,
+        content_id: str
+    ) -> None:
+        """ /messagefilter del <regex> """
+        """ This is private """
+        await interaction.response.send_message(f"{interaction.user.mention} messagefilter loading...", ephemeral=True)
+        # re-check perm
+        try:
+            is_mod = await self.utils.is_managed_message(interaction.guild, interaction.user.id)
+            if is_mod is False:
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, permission denied."
+                )
+                return
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+        # end of re-check perm
+        if str(interaction.guild.id) not in self.bot.log_channel_guild or \
+            self.bot.log_channel_guild[str(interaction.guild.id)] is None:
+            await interaction.edit_original_response(
+                content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`."
+            )
+            return
+        try:
+            if interaction.guild.id not in self.bot.enable_message_filter:
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, your guild didn't enable `messagefilter`. Do it with `/messagefilter on`."
+                )
+                return
+            else:
+                if len(self.bot.message_filters[str(interaction.guild.id)]) == 0:
+                    await interaction.edit_original_response(
+                        content=f"{interaction.user.mention}, your guild doesn't have any message contents to filter yet."\
+                            " You can add by `/messagefilter add`"
+                    )
+                    return
+                else:
+                    get_msg_filter = await self.utils.get_msg_filter_list(str(interaction.guild.id))
+                    if len(get_msg_filter) > 0:
+                        content_id = int(content_id)
+                        list_existing_ids = [each['message_filters_id'] for each in get_msg_filter]
+                        if content_id not in list_existing_ids:
+                            await interaction.edit_original_response(
+                                content=f"{interaction.user.mention}, that ID doesn't belong to your guild."
+                            )
+                        else:
+                            content = None
+                            for each in get_msg_filter:
+                                if each['message_filters_id'] == content_id:
+                                    content = each['content']
+                                    break
+                            deleting = await self.utils.delete_msg_filter(
+                                str(interaction.guild.id), content_id, str(interaction.user.id)
+                            )
+                            if deleting is True:
+                                await interaction.edit_original_response(
+                                    content=f"{interaction.user.mention}, successfully deleted filter:```{content}```"
+                                )
+                                await self.utils.log_to_channel(
+                                    self.bot.log_channel_guild[str(interaction.guild.id)],
+                                    f"{interaction.user.name} / `{interaction.user.id}` removed message filter content:```{content}```"
+                                )
+                                self.bot.message_filters[str(interaction.guild.id)].remove(content)
+                    else:
+                        await interaction.edit_original_response(
+                            content=f"{interaction.user.mention}, your guild doesn't have any message contents to filter yet."\
+                                " You can add by `/messagefilter add`"
+                        )
+                    return
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+
+    @command_messagefilter_delete_message_filter.autocomplete('content_id')
+    async def content_id_autocomplete(
+        self,
+        interaction: discord.Interaction,
+        current: str
+    ) -> List[app_commands.Choice[str]]:
+        # Do stuff with the "current" parameter, e.g. querying it search results...
+        list_auto_filters = await self.utils.get_msg_filter_list_search(str(interaction.guild.id), current, 8)
+        content_list = []
+        item_list_ids = []
+        if len(list_auto_filters) > 0:
+            for each in list_auto_filters:
+                if each['message_filters_id'] not in item_list_ids:
+                    content = each['content'][0:30] + "..." if len(each['content']) > 31 else each['content']
+                    content_list.append(content)
+                    item_list_ids.append(str(each['message_filters_id']))
+            return [
+                app_commands.Choice(name=item, value=item_list_ids[content_list.index(item)])
+                for item in content_list if current.lower() in item.lower()
+            ]
+        else:
+            list_filters = ["N/A"]
+            return [
+                app_commands.Choice(name=item, value=item)
+                for item in list_filters if current.lower() in item.lower()
+            ]
 
     @commands.Cog.listener()
     async def on_ready(self):

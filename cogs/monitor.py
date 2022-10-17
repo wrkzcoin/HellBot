@@ -5,6 +5,8 @@ import time
 import asyncio
 import re
 import unicodedata
+from rapidfuzz import fuzz
+import hashlib
 
 from cogs.utils import check_regex
 from cogs.utils import Utils
@@ -15,6 +17,98 @@ class Events(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot: commands.Bot = bot
         self.utils = Utils(bot)
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        # should ignore webhook message
+        if message is None:
+            return
+
+        if hasattr(message, "channel") and hasattr(message.channel, "id") and message.webhook_id:
+            return
+
+        if hasattr(message, "channel") and hasattr(message.channel, "id") and \
+            message.author.bot is False:
+            # Check if message filter enable
+            if message.guild.id not in self.bot.enable_message_filter:
+                return
+            else:
+                # Check if there is a log channel
+                if str(message.guild.id) not in self.bot.log_channel_guild or \
+                    self.bot.log_channel_guild[str(message.guild.id)] is None:
+                    return
+                else:
+                    # Check if bot has permission to manage message
+                    check_perm = await self.utils.get_bot_perm(message.guild)
+                    if check_perm and check_perm['manage_messages'] is False:
+                        # log channel
+                        await self.utils.log_to_channel(
+                            self.bot.config['discord']['log_channel'],
+                            f"Guild `{message.guild.name} / {message.guild.id}` Bot not having manage message permission."
+                        )
+                        await self.utils.log_to_channel(
+                            self.bot.log_channel_guild[str(message.guild.id)],
+                            f"I can't filter message since I don't have manage message permission."\
+                            f" You can turn it off by `/messagefilter off`"
+                        )
+                        return
+
+                    try:
+                        # Check with templates
+                        matches = False
+                        matched_key = None
+                        matched_content = ""
+                        ratio = 0.0
+                        if len(self.bot.message_filter_templates) > 0:
+                            for each in self.bot.message_filter_templates:
+                                compare = fuzz.partial_ratio(message.content, each)
+                                if (len(message.content) > 12 and compare >= 80) or\
+                                    (len(message.content) <=12 and compare > 90):
+                                    matches = True
+                                    sha1 = hashlib.sha1()
+                                    sha1.update(each.encode())
+                                    matched_key = sha1.hexdigest()
+                                    matched_content = each
+                                    ratio = compare
+                                    # update trigger
+                                    try:
+                                        await self.utils.update_message_filters_template_trigger(
+                                            self.bot.message_filter_templates_kv[matched_key]['msg_tpl_id']
+                                        )
+                                    except Exception as e:
+                                        traceback.print_exc(file=sys.stdout)
+                                    break
+                        if matches is False and str(message.guild.id) in self.bot.message_filters and \
+                            len(self.bot.message_filters[str(message.guild.id)]) > 0:
+                            for each in self.bot.message_filters[str(message.guild.id)]:
+                                compare = fuzz.partial_ratio(message.content, each)
+                                if (len(message.content) > 12 and compare >= 80) or\
+                                    (len(message.content) <=12 and compare > 90):
+                                    matches = True
+                                    sha1 = hashlib.sha1()
+                                    sha1.update(each.encode())
+                                    matched_key = sha1.hexdigest()
+                                    matched_content = each
+                                    ratio = compare
+                                    break
+                        if matches is True:
+                            # log channel
+                            await self.utils.log_to_channel(
+                                self.bot.config['discord']['log_channel'],
+                                f"Guild `{message.guild.name}` filtered message:\n```{message.content}``` from "\
+                                f"author {message.author.name} / `{message.author.id}`"
+                            )
+                            await self.utils.log_to_channel(
+                                self.bot.log_channel_guild[str(message.guild.id)],
+                                f"User {message.author.name} / `{message.author.id}` posted a filtered content in {message.channel.mention}:\n"\
+                                f"```{message.content}```"
+                            )
+                            await message.delete()
+                            await self.utils.add_deleted_message_log(
+                                message.content, matched_content, ratio, str(message.guild.id), str(message.author.id)
+                            )
+                    except Exception as e:
+                        traceback.print_exc(file=sys.stdout)
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
@@ -62,7 +156,7 @@ class Events(commands.Cog):
     async def on_member_join(self, member):
         if str(member.guild.id) in self.bot.log_channel_guild and self.bot.log_channel_guild[str(member.guild.id)]:
             # check permission bot
-            check_perm = await self.utils.bot_can_kick_ban(member.guild)
+            check_perm = await self.utils.get_bot_perm(member.guild)
             if check_perm is None:
                 await self.utils.log_to_channel(
                     self.bot.config['discord']['log_channel'],
@@ -163,7 +257,7 @@ class Events(commands.Cog):
     async def on_member_update(self, before, after):
         if str(after.guild.id) in self.bot.log_channel_guild and self.bot.log_channel_guild[str(after.guild.id)]:
             # check permission bot
-            check_perm = await self.utils.bot_can_kick_ban(after.guild)
+            check_perm = await self.utils.get_bot_perm(after.guild)
             if check_perm is None:
                 await self.utils.log_to_channel(
                     self.bot.config['discord']['log_channel'],

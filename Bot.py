@@ -18,6 +18,8 @@ from config import load_config
 intents = discord.Intents.default()
 intents.members = True
 intents.presences = True
+intents.messages = True
+intents.message_content = True
 
 bot = AutoShardedBot(
     command_prefix=commands.when_mentioned,
@@ -38,6 +40,11 @@ bot.max_ignored_user = {}
 bot.max_ignored_role = {}
 bot.maximum_regex = {}
 
+bot.enable_message_filter = [] # list of guild enable
+bot.message_filters = {} # dict of guild with messages to filter
+bot.message_filter_templates = [] # list of template in database
+bot.message_filter_templates_kv = {}
+
 # example:
 # bot.name_filter_list[guild_id] = ["(?i)bot$.", "(?i) bot$", "..."]
 # bot.name_filter_list_pending[guild_id] = ["(?i)bot$.", "(?i) bot$", "..."]
@@ -48,6 +55,11 @@ bot.maximum_regex = {}
 # bot.max_ignored_user[guild_id] = 111
 # bot.max_ignored_role[guild_id] = 111
 # bot.maximum_regex[guild_id] = 111
+
+# bot.enable_message_filter =  [] # default is off for all guild
+# bot.message_filters[guild_id] = ["...", ".....", ...]
+# bot.message_filter_templates = ["...", "..."]
+# bot.message_filter_templates_kv = {}
 
 @bot.event
 async def on_ready() -> None:

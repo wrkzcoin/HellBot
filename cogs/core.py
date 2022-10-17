@@ -21,12 +21,18 @@ class Core(commands.Cog):
         """ /help """
         basic_help_namefilter = """
 Manage namefilter list with sub-commands `/namefilter [list|add|del|apply|test]`.
-Requires Discord Member with manage-channel permission.
+Requires Discord Member with ban/kick permission.
 """
         basic_help_ignore = """
 Manage ignore list with sub-commands `/ignore [addrole|delrole|adduser|deluser|list]`.
-Requires Discord Member with manage-channel permission.
+Requires Discord Member with ban/kick permission.
 """
+
+        basic_help_messagefilter = """
+Manage message filter list with sub-commands `/messagefilter [list|add|del|on|off]`.
+Requires Discord Member with manage-messages permission.
+"""
+
         basic_help_other = """
 Other commands such as `/donate`, `/about` and `/logchan`.
 """
@@ -55,6 +61,12 @@ You can request for more, just join our supported guild and request manually.
             page.add_field(
                 name="/ignore",
                 value=basic_help_ignore,
+                inline=False
+            )
+
+            page.add_field(
+                name="/messagefilter",
+                value=basic_help_messagefilter,
                 inline=False
             )
 
