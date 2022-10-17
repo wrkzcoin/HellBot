@@ -1634,9 +1634,11 @@ class Commanding(commands.Cog):
                     get_msg_filter = await self.utils.get_msg_filter_list(str(interaction.guild.id))
                     if len(get_msg_filter) > 0:
                         list_msg_filters = []
+                        i = 1
                         for each in get_msg_filter:
                             content = each['content'][0:30] + "..." if len(each['content']) > 31 else each['content']
-                            list_msg_filters.append("{})=> {}".format(each['message_filters_id'], content))
+                            list_msg_filters.append("{})=> {}".format(i, content))
+                            i += 1
                         list_msg_filters_str = "\n".join(list_msg_filters)
                         await interaction.edit_original_response(
                             content=f"{interaction.user.mention}, filter list:"\

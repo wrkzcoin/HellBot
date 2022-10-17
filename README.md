@@ -18,9 +18,9 @@
 
 ## Overview
 
-This bot is very basic with only few commands such as `/namefilter`, `/ignore`, `/logchan`, `/donate`, `/about`. This Bot is still new and needs more testing. Invite and use at your own risk right now.
+This bot is very basic with only few commands such as `/namefilter`, `/ignore`, `/messagefilter`, `/logchan`, `/donate`, `/about`.
 
-To invite this Bot, use the [link here](https://invite-hellbot.wrkz.work/). This Bot requires permission to kick/ban or it will not work.
+To invite this Bot, use the [link here](https://invite-hellbot.wrkz.work/). This Bot requires permission to `kick/ban/manage message` or it will not work. The invitation link already set necessary permissions.
 
 ## Built with
 
