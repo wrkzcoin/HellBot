@@ -904,7 +904,7 @@ class Commanding(commands.Cog):
                     view = ConfirmApply(
                         self.bot, interaction, timeout=30, 
                         disable_button=False, list_users=found_user_id, 
-                        disable_apply=True
+                        disable_apply=disable_apply
                     )
                     await interaction.edit_original_response(content=None, embed=embed, view=view)
                     await view.wait()
@@ -1159,23 +1159,26 @@ class Commanding(commands.Cog):
                     await interaction.edit_original_response(content=f"{interaction.user.mention}, given regex `{regex}` is too long.")
                     return
 
-                if str(interaction.guild.id) in self.bot.name_filter_list and\
-                    len(self.bot.name_filter_list[str(interaction.guild.id)]) >= self.bot.maximum_regex[str(interaction.guild.id)]:
-                    await interaction.edit_original_response(content=f"{interaction.user.mention}, "\
-                        f"Your guild `{interaction.guild.name}` has maximum of name filter already "\
-                        f"`{str(self.bot.maximum_regex[str(interaction.guild.id)])}`."
-                    )
-                    await self.utils.log_to_channel(
-                        self.bot.config['discord']['log_channel'],
-                        f"Guild `{interaction.guild.name}` has maximum of name filter already "\
-                        f"`{str(self.bot.maximum_regex[str(interaction.guild.id)])}`."
-                    )
-                    await self.utils.log_to_channel(
-                        self.bot.log_channel_guild[str(interaction.guild.id)],
-                        f"{interaction.user.name} / `{interaction.user.id}` executed `/namefilter add {regex}` "\
-                        f"but it reaches maximum regex already `{str(self.bot.maximum_regex[str(interaction.guild.id)])}`."
-                    )
-                    return
+                try:
+                    if str(interaction.guild.id) in self.bot.name_filter_list and\
+                        len(self.bot.name_filter_list[str(interaction.guild.id)]) >= self.bot.maximum_regex[str(interaction.guild.id)]:
+                        await interaction.edit_original_response(content=f"{interaction.user.mention}, "\
+                            f"Your guild `{interaction.guild.name}` has maximum of name filter already "\
+                            f"`{str(self.bot.maximum_regex[str(interaction.guild.id)])}`."
+                        )
+                        await self.utils.log_to_channel(
+                            self.bot.config['discord']['log_channel'],
+                            f"Guild `{interaction.guild.name}` has maximum of name filter already "\
+                            f"`{str(self.bot.maximum_regex[str(interaction.guild.id)])}`."
+                        )
+                        await self.utils.log_to_channel(
+                            self.bot.log_channel_guild[str(interaction.guild.id)],
+                            f"{interaction.user.name} / `{interaction.user.id}` executed `/namefilter add {regex}` "\
+                            f"but it reaches maximum regex already `{str(self.bot.maximum_regex[str(interaction.guild.id)])}`."
+                        )
+                        return
+                except Exception as e:
+                    traceback.print_exc(file=sys.stdout)
 
                 try:
                     if str(interaction.guild.id) in self.bot.name_filter_list_pending and\
@@ -1378,6 +1381,7 @@ class Commanding(commands.Cog):
                     f"`{interaction.guild.name} / {interaction.guild.id}` to "\
                     f"{channel.name}."
                 )
+                await self.utils.load_reload_bot_data()
             except discord.errors.Forbidden:
                 await interaction.edit_original_response(content=f"{interaction.user.mention}, error. Maybe I don't have access to that channel.")
                 await self.utils.log_to_channel(
