@@ -340,7 +340,9 @@ class Commanding(commands.Cog):
 
             if str(interaction.guild.id) not in self.bot.log_channel_guild or \
                 self.bot.log_channel_guild[str(interaction.guild.id)] is None:
-                await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`."
+                )
             else:
                 # Check permission
                 check_perm = await self.utils.get_bot_perm(interaction.guild)
@@ -453,7 +455,9 @@ class Commanding(commands.Cog):
 
             if str(interaction.guild.id) not in self.bot.log_channel_guild or \
                 self.bot.log_channel_guild[str(interaction.guild.id)] is None:
-                await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`."
+                )
             else:
                 # Check permission
                 check_perm = await self.utils.get_bot_perm(interaction.guild)
@@ -558,7 +562,9 @@ class Commanding(commands.Cog):
 
             if str(interaction.guild.id) not in self.bot.log_channel_guild or \
                 self.bot.log_channel_guild[str(interaction.guild.id)] is None:
-                await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`."
+                )
                 return
             else:
                 # Check permission
@@ -671,7 +677,9 @@ class Commanding(commands.Cog):
 
             if str(interaction.guild.id) not in self.bot.log_channel_guild or \
                 self.bot.log_channel_guild[str(interaction.guild.id)] is None:
-                await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`."
+                )
                 return
             else:
                 # Check permission
@@ -777,7 +785,9 @@ class Commanding(commands.Cog):
 
         if str(interaction.guild.id) not in self.bot.log_channel_guild or \
             self.bot.log_channel_guild[str(interaction.guild.id)] is None:
-            await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
+            await interaction.edit_original_response(
+                content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`."
+            )
             return
         else:
             # Check permission
@@ -932,7 +942,9 @@ class Commanding(commands.Cog):
 
         if str(interaction.guild.id) not in self.bot.log_channel_guild or \
             self.bot.log_channel_guild[str(interaction.guild.id)] is None:
-            await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
+            await interaction.edit_original_response(
+                content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`."
+            )
             return
         else:
             # Check permission
@@ -985,7 +997,9 @@ class Commanding(commands.Cog):
                     )
                     await interaction.edit_original_response(content=None, embed=embed)
                 else:
-                    await interaction.edit_original_response(content=f"{interaction.user.mention}, your guild has no name filter yet.")
+                    await interaction.edit_original_response(
+                        content=f"{interaction.user.mention}, your guild has no name filter yet."
+                    )
             except Exception as e:
                 traceback.print_exc(file=sys.stdout)
 
@@ -1018,7 +1032,9 @@ class Commanding(commands.Cog):
 
         if str(interaction.guild.id) not in self.bot.log_channel_guild or \
             self.bot.log_channel_guild[str(interaction.guild.id)] is None:
-            await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
+            await interaction.edit_original_response(
+                content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`."
+            )
             return
         else:
             # Check permission
@@ -1125,7 +1141,9 @@ class Commanding(commands.Cog):
         try:
             if str(interaction.guild.id) not in self.bot.log_channel_guild or \
                 self.bot.log_channel_guild[str(interaction.guild.id)] is None:
-                await interaction.edit_original_response(content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`.")
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, please set log channel first with `/logchan #channel`."
+                )
                 return
             else:
                 # Check permission
@@ -1153,10 +1171,30 @@ class Commanding(commands.Cog):
                         return
                 # End of check permission
                 if len(regex) < self.bot.config['discord']['minimum_regex_length']:
-                    await interaction.edit_original_response(content=f"{interaction.user.mention}, given regex `{regex}` is too short.")
+                    await interaction.edit_original_response(
+                        content=f"{interaction.user.mention}, given regex `{regex}` is too short. "\
+                            f"It should not be shorter than `{self.bot.config['discord']['minimum_regex_length']}` chars "\
+                            f"or longer than `{self.bot.config['discord']['maximum_regex_length']}`."
+                    )
+                    await self.utils.log_to_channel(
+                        self.bot.log_channel_guild[str(interaction.guild.id)],
+                        f"{interaction.user.name} / `{interaction.user.id}` executed `/namefilter add {regex}` "\
+                        f"but it's too short (requires between `{self.bot.config['discord']['minimum_regex_length']}` to "\
+                        f"`{self.bot.config['discord']['maximum_regex_length']}`)."
+                    )
                     return
                 elif len(regex) > self.bot.config['discord']['maximum_regex_length']:
-                    await interaction.edit_original_response(content=f"{interaction.user.mention}, given regex `{regex}` is too long.")
+                    await interaction.edit_original_response(
+                        content=f"{interaction.user.mention}, given regex `{regex}` is too long. "\
+                            f"It should not be shorter than `{self.bot.config['discord']['minimum_regex_length']}` "\
+                            f"or longer than `{self.bot.config['discord']['maximum_regex_length']}` chars."
+                        )
+                    await self.utils.log_to_channel(
+                        self.bot.log_channel_guild[str(interaction.guild.id)],
+                        f"{interaction.user.name} / `{interaction.user.id}` executed `/namefilter add {regex}` "\
+                        f"but it's too long (requires between `{self.bot.config['discord']['minimum_regex_length']}` to "\
+                        f"`{self.bot.config['discord']['maximum_regex_length']}`)."
+                    )
                     return
 
                 try:
@@ -1196,11 +1234,15 @@ class Commanding(commands.Cog):
                         try:
                             await self.utils.log_to_channel(
                                 self.bot.log_channel_guild[str(interaction.guild.id)],
-                                f"{interaction.user.name} / `{interaction.user.id}` executed `/namefilter {regex}`. Given regex `{regex}` is invalid."
+                                f"{interaction.user.name} / `{interaction.user.id}` executed `/namefilter {regex}`. "\
+                                f"Given regex `{regex}` is invalid. Please test with <https://regex101.com/>."
                             )
                         except Exception as e:
                             traceback.print_exc(file=sys.stdout)
-                        await interaction.edit_original_response(content=f"{interaction.user.mention}, given regex `{regex}` is invalid.")
+                        await interaction.edit_original_response(
+                            content=f"{interaction.user.mention}, given regex `{regex}` is invalid. "\
+                                "Please test with <https://regex101.com/>."
+                        )
                         return
                     else:
                         # add this guild key if not exist
@@ -1210,7 +1252,9 @@ class Commanding(commands.Cog):
                         if str(interaction.guild.id) in self.bot.name_filter_list and\
                             self.bot.name_filter_list[str(interaction.guild.id)] and\
                                 regex in self.bot.name_filter_list[str(interaction.guild.id)]:
-                                await interaction.edit_original_response(content=f"{interaction.user.mention}, given regex `{regex}` is already exist!")
+                                await interaction.edit_original_response(
+                                    content=f"{interaction.user.mention}, given regex `{regex}` is already exist!"
+                                )
                                 return
                         else:
                             adding = await self.utils.insert_new_regex(str(interaction.guild.id), regex, str(interaction.user.id))
@@ -1225,7 +1269,9 @@ class Commanding(commands.Cog):
                                     f"{interaction.user.name} / `{interaction.user.id}` executed `/namefilter add {regex}`."
                                 )
                             else:
-                                await interaction.edit_original_response(content=f"{interaction.user.mention}, internal error during adding `{regex}`")
+                                await interaction.edit_original_response(
+                                    content=f"{interaction.user.mention}, internal error during adding `{regex}`. Please report!"
+                                )
                 except Exception as e:
                     traceback.print_exc(file=sys.stdout)
         except Exception as e:
@@ -1445,11 +1491,15 @@ class Commanding(commands.Cog):
                 try:
                     await self.utils.log_to_channel(
                         self.bot.log_channel_guild[str(interaction.guild.id)],
-                        f"{interaction.user.name} / `{interaction.user.id}` executed `/scannick {regex}`. Given regex `{regex}` is invalid."
+                        f"{interaction.user.name} / `{interaction.user.id}` executed `/scannick {regex}`. "\
+                        f"Given regex `{regex}` is invalid. Please test with <https://regex101.com/>."
                     )
                 except Exception as e:
                     traceback.print_exc(file=sys.stdout)
-                await interaction.edit_original_response(content=f"{interaction.user.mention}, given regex `{regex}` is invalid.")
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, "\
+                    f"given regex `{regex}` is invalid. Please test with <https://regex101.com/>."
+                )
                 return
             else:
                 try:
@@ -1527,7 +1577,8 @@ class Commanding(commands.Cog):
         try:
             if len(content) < 10 or len(content) > 1000:
                 await interaction.edit_original_response(
-                    content=f"{interaction.user.mention}, the message content is too short or too long."
+                    content=f"{interaction.user.mention}, the message content is too short or too long. "\
+                        "It should not be shorter than 10 chars or longer than 1000 chars."
                 )
                 return
             else:

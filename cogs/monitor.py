@@ -27,6 +27,9 @@ class Events(commands.Cog):
         if hasattr(message, "channel") and hasattr(message.channel, "id") and message.webhook_id:
             return
 
+        if len(message.content) < 10:
+            return
+
         if hasattr(message, "channel") and hasattr(message.channel, "id") and \
             message.author.bot is False:
             # Check if message filter enable
@@ -280,13 +283,6 @@ class Events(commands.Cog):
             # end of check permission
 
             if after.nick is None:
-                try:
-                    await self.utils.log_to_channel(
-                        self.bot.log_channel_guild[str(after.guild.id)],
-                        f'[**member_update**] {before.id} / {before.name} changes nick to default nick `{after.name}` | {after.mention}'
-                    )
-                except Exception as e:
-                    traceback.print_exc(file=sys.stdout)
                 # if nick matches, kick / ban?
                 try:
                     regex_list = self.bot.name_filter_list[str(after.guild.id)]
@@ -297,21 +293,6 @@ class Events(commands.Cog):
                                 name = unicodedata.normalize( 'NFKC', after.name)
                                 r = re.search(regex_test, name)
                                 if r:
-                                    # Check if user can kick/ban, skip
-                                    try:
-                                        check_perm = await self.utils.get_user_perms(after.guild, after.id)
-                                        if check_perm is not None and \
-                                            (check_perm['kick_members'] is True or check_perm['ban_members'] is True):
-                                            await self.utils.log_to_channel(
-                                                self.bot.log_channel_guild[str(after.guild.id)],
-                                                f"User `{after.name}` | {after.mention} updated name matches `{each}` but "\
-                                                "He/she has permission to kick/ban (Excluded)!"
-                                            )
-                                            return
-                                    except Exception as e:
-                                        traceback.print_exc(file=sys.stdout)
-                                    # End of check user can kick/ban
-
                                     ignore = False
                                     # check if user in ignore list role
                                     if len(after.roles) > 0:
@@ -352,6 +333,21 @@ class Events(commands.Cog):
                                     except Exception as e:
                                         traceback.print_exc(file=sys.stdout)
                                     # end of check if user in ignore list
+
+                                    # Check if user can kick/ban, skip
+                                    try:
+                                        check_perm = await self.utils.get_user_perms(after.guild, after.id)
+                                        if check_perm is not None and \
+                                            (check_perm['kick_members'] is True or check_perm['ban_members'] is True):
+                                            await self.utils.log_to_channel(
+                                                self.bot.log_channel_guild[str(after.guild.id)],
+                                                f"User `{after.name}` | {after.mention} updated name matches `{each}` but "\
+                                                "He/she has permission to kick/ban (Excluded)!"
+                                            )
+                                            return
+                                    except Exception as e:
+                                        traceback.print_exc(file=sys.stdout)
+                                    # End of check user can kick/ban
 
                                     if self.bot.config['discord']['is_testing'] == 1:
                                         await self.utils.log_to_channel(
