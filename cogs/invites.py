@@ -36,6 +36,40 @@ class Invites(commands.Cog):
     invites_group = app_commands.Group(name="invites", guild_only=True, description="Invite's command list.")
 
     @invites_group.command(
+        name="myinvitelist",
+        description="List your active invited links."
+    )
+    async def command_invites_myinvitelist(
+        self,
+        interaction: discord.Interaction,
+    ) -> None:
+        await interaction.response.send_message(f"{interaction.user.mention} checking your invited code list ...", ephemeral=True)
+        try:
+            if not interaction.guild.me.guild_permissions.manage_guild:
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, sorry! Bot doesn't have permission manage_guild and can't check that!"
+                )
+                return
+            else:
+                guild_invites = await interaction.guild.invites()
+                list_invites = []
+                for invite in guild_invites:
+                    if invite.inviter.id == interaction.user.id:
+                        list_invites.append("[{}]({}) - uses {}, max uses {}, created <t:{}:f>".format(invite.code, invite.url, invite.uses, "N/A" if invite.max_uses == 0 else invite.max_uses, int(invite.created_at.timestamp())))
+                if len(list_invites) > 0:
+                    list_inv = "\n".join(list_invites)
+                    await interaction.edit_original_response(
+                        content=f"{interaction.user.mention}, your invite links ({str(len(list_invites))}):\n{list_inv}"
+                    )
+                else:
+                    await interaction.edit_original_response(
+                        content=f"{interaction.user.mention}, you don't have any invited link!"
+                    )
+        except Exception:
+            traceback.print_exc(file=sys.stdout)
+
+
+    @invites_group.command(
         name="leaderboard",
         description="Check invite leaderboard."
     )
@@ -48,12 +82,12 @@ class Invites(commands.Cog):
             get_list = await self.utils.invite_top_list(str(interaction.guild.id))
             if len(get_list) == 0:
                 await interaction.edit_original_response(
-                    content=f"{interaction.user.mention}, there's no record yet for this Guild **{interaction.guild.name}**."
+                    content=f"{interaction.user.mention}, there's no record yet for this Guild **{interaction.guild.name}** or the recorded guest(s) left."
                 )
             else:
                 embed = discord.Embed(
                     title="Invite Leaderboard",
-                    description="Top inviter for {}!".format(interaction.guild.name),
+                    description="Top inviter(s) for {}!".format(interaction.guild.name),
                     timestamp=datetime.now()
                 )
                 list_comers = []
@@ -105,7 +139,7 @@ class Invites(commands.Cog):
     async def on_member_remove(self, member):
         if not member.bot:
             guild = member.guild
-            msg = f"{member.mention} left guild **{guild.name}**."
+            msg = f"{member.mention} / {member.name} left guild **{guild.name}**."
             if hasattr(guild, "system_channel") and guild.system_channel:
                 try:
                     channel = guild.system_channel
@@ -132,7 +166,7 @@ class Invites(commands.Cog):
                         if invite_dict[0] == invite.code:
                             # channel = guild.system_channel
                             account_created =  int(member.created_at.timestamp())
-                            msg = f"{member.mention} account created <t:{str(account_created)}:R> has joined. Invited link by {invite.inviter.mention}."
+                            msg = f"{member.mention} / {member.name} account created <t:{str(account_created)}:R> has joined. Invited link by {invite.inviter.mention}."
                             if int(invite.uses) > invite_dict[1]:
                                 print(f"{member} joined. Invited with: {invite.code} | by {invite.inviter}")
                                 await self.utils.insert_new_invite(
