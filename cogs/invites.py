@@ -103,6 +103,8 @@ class Invites(commands.Cog):
                     icon_url=interaction.user.display_avatar
                 )
                 embed.set_author(name=self.bot.user.name, icon_url=self.bot.user.display_avatar)
+                if interaction.guild.icon:
+                    embed.set_thumbnail(url=str(interaction.guild.icon))
                 await interaction.edit_original_response(
                     content=None, embed=embed
                 )
@@ -111,33 +113,66 @@ class Invites(commands.Cog):
 
     @commands.Cog.listener()
     async def on_invite_create(self, invite):
-        await self.set_invites(invite.guild)
-        await self.utils.log_to_channel(
-            self.bot.config['discord']['log_channel'],
-            f"New invite created for Guild **{invite.guild.name}** by {invite.inviter.mention}. Code: `{invite.code}`."
-        )
-        if str(invite.guild.id) in self.bot.log_channel_guild:
+        guild = invite.guild
+        if not invite.guild.me.guild_permissions.manage_guild:
             await self.utils.log_to_channel(
-                self.bot.log_channel_guild[str(invite.guild.id)],
-                f"{invite.inviter.mention} / `{invite.inviter.id}` created a new invite code `{invite.code}`."
+                self.bot.config['discord']['log_channel'],
+                f"Bot doesn't have permission `manage_guild` in {guild.id} / {guild.name}."
             )
+            if str(guild.id) in self.bot.log_channel_guild:
+                await self.utils.log_to_channel(
+                    self.bot.log_channel_guild[str(guild.id)],
+                    f"Bot doesn't have permission `manage_guild` in {guild.id} / {guild.name}. Bot can't check the invited codes and list."
+                )
+        else:
+            await self.set_invites(invite.guild)
+            await self.utils.log_to_channel(
+                self.bot.config['discord']['log_channel'],
+                f"New invite created for Guild **{invite.guild.name}** by {invite.inviter.mention}. Code: `{invite.code}`."
+            )
+            await self.utils.create_invite(
+                str(invite.inviter.id), str(invite.guild.id), invite.code, invite.url,
+                invite.max_uses, int(invite.expires_at.timestamp()), int(invite.created_at.timestamp())
+            )
+            if str(invite.guild.id) in self.bot.log_channel_guild:
+                await self.utils.log_to_channel(
+                    self.bot.log_channel_guild[str(invite.guild.id)],
+                    f"{invite.inviter.mention} / `{invite.inviter.id}` created a new invite code `{invite.code}`."
+                )
 
     @commands.Cog.listener()
     async def on_invite_delete(self, invite):
-        await self.set_invites(invite.guild)
-        await self.utils.log_to_channel(
-            self.bot.config['discord']['log_channel'],
-            f"Delete an invite from Guild **{invite.guild.name}** by {invite.inviter.mention}. Code: `{invite.code}`."
-        )
-        if str(invite.guild.id) in self.bot.log_channel_guild:
+        guild = invite.guild
+        if not invite.guild.me.guild_permissions.manage_guild:
             await self.utils.log_to_channel(
-                self.bot.log_channel_guild[str(invite.guild.id)],
-                f"Invite link removed. Code: `{invite.code}`."
+                self.bot.config['discord']['log_channel'],
+                f"Bot doesn't have permission `manage_guild` in {guild.id} / {guild.name}."
             )
+            if str(guild.id) in self.bot.log_channel_guild:
+                await self.utils.log_to_channel(
+                    self.bot.log_channel_guild[str(guild.id)],
+                    f"Bot doesn't have permission `manage_guild` in {guild.id} / {guild.name}. Bot can't check the invited codes and list."
+                )
+        else:
+            await self.set_invites(invite.guild)
+            await self.utils.log_to_channel(
+                self.bot.config['discord']['log_channel'],
+                f"Delete an invite from Guild **{invite.guild.name}** by {invite.inviter.mention}. Code: `{invite.code}`."
+            )
+            if str(invite.guild.id) in self.bot.log_channel_guild:
+                await self.utils.log_to_channel(
+                    self.bot.log_channel_guild[str(invite.guild.id)],
+                    f"Invite link removed. Code: `{invite.code}`."
+                )
 
     @commands.Cog.listener()
     async def on_member_remove(self, member):
         if not member.bot:
+            try:
+                invs_after = await guild.invites()
+                self.invites_dict[guild.id] = [tuple((invite.code, invite.uses)) for invite in invs_after]
+            except Exception:
+                traceback.print_exc(file=sys.stdout)
             guild = member.guild
             msg = f"{member.mention} / {member.name} left guild **{guild.name}**."
             if hasattr(guild, "system_channel") and guild.system_channel:
@@ -159,27 +194,33 @@ class Invites(commands.Cog):
             )
             return
         if not member.bot:
-            guild_invites = await guild.invites()
-            for invite in guild_invites:
+            # after
+            invs_before = self.invites_dict.get(guild.id)
+            invs_after = await guild.invites()
+            self.invites_dict[guild.id] = [tuple((invite.code, invite.uses)) for invite in invs_after]
+            done = False
+            for invite in invs_after:
                 try:
-                    for invite_dict in self.invites_dict.get(guild.id):
-                        if invite_dict[0] == invite.code:
+                    for invite_dict in invs_before:
+                        if done is True:
+                            break
+                        if invite_dict[0] == invite.code and int(invite.uses) > invite_dict[1]:
+                            done = True
                             # channel = guild.system_channel
                             account_created =  int(member.created_at.timestamp())
                             msg = f"{member.mention} / {member.name} account created <t:{str(account_created)}:R> has joined. Invited link by {invite.inviter.mention}."
-                            if int(invite.uses) > invite_dict[1]:
-                                print(f"{member} joined. Invited with: {invite.code} | by {invite.inviter}")
-                                await self.utils.insert_new_invite(
-                                    str(guild.id), guild.name, len(guild.members), str(guild.owner.id),
-                                    str(invite.inviter.id), invite.code, str(member.id), account_created
-                                )
-                                if hasattr(guild, "system_channel") and guild.system_channel:
-                                    try:
-                                        channel = guild.system_channel
-                                        await channel.send(msg)
-                                    except Exception:
-                                        traceback.print_exc(file=sys.stdout)
-                                break
+                            print(f"{member} joined. Invited with: {invite.code} | by {invite.inviter}")
+                            await self.utils.insert_new_invite(
+                                str(guild.id), guild.name, len(guild.members), str(guild.owner.id),
+                                str(invite.inviter.id), invite.code, str(member.id), account_created
+                            )
+                            if hasattr(guild, "system_channel") and guild.system_channel:
+                                try:
+                                    channel = guild.system_channel
+                                    await channel.send(msg)
+                                except Exception:
+                                    traceback.print_exc(file=sys.stdout)
+                            break
                 except Exception:
                     traceback.print_exc(file=sys.stdout)
         else:

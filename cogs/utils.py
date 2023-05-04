@@ -656,6 +656,28 @@ class Utils(commands.Cog):
         return False
 
     # invite
+    async def create_invite(
+        self, user_id: str, guild_id: str, code: str, link: str, max_uses: str,
+        expires_at: int, created_at: int
+    ):
+        try:
+            await self.open_connection()
+            async with self.db_pool.acquire() as conn:
+                async with conn.cursor() as cur:
+                    sql = """
+                    INSERT INTO `invites_created` 
+                    (`user_id`, `guild_id`, `code`, `link`, `max_uses`, `expires_at`, `created_at`)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """
+                    await cur.execute(sql, (
+                        user_id, guild_id, code, link, max_uses, expires_at, created_at
+                    ))
+                    await conn.commit()
+                    return True
+        except Exception:
+            traceback.print_exc(file=sys.stdout)
+        return False
+
     async def insert_new_invite(
         self, guild_id: str, guild_name: str, total_users: int, guild_owner_id: str,
         by_user_id: str, code: str, member_id: str, member_created_at: int
