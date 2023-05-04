@@ -226,6 +226,86 @@ class Commanding(commands.Cog):
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
 
+    @checks.has_permissions(ban_members=True)
+    @app_commands.guild_only()
+    @app_commands.command(
+        name="clearmsg",
+        description="Clear a spammer or a user's last messages"
+    )
+    async def command_clear_user_msg(
+        self,
+        interaction: discord.Interaction,
+        user_id: str
+    ) -> None:
+        """ /clearmsg <user id> """
+        await interaction.response.send_message(f"{interaction.user.mention} checking...", ephemeral=True)
+        # re-check perm
+        try:
+            is_mod = await self.utils.is_managed_message(interaction.guild, interaction.user.id)
+            if is_mod is False:
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, permission denied."
+                )
+                return
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+        # end of re-check perm
+
+        try:
+            # Check permission
+            check_perm = await self.utils.get_bot_perm(interaction.guild)
+            if check_perm is None:
+                await interaction.edit_original_response(
+                    content=f"{interaction.user.mention}, internal error. Check again later!"
+                )
+                await self.utils.log_to_channel(
+                    self.bot.config['discord']['log_channel'],
+                    f"{interaction.user.name} / `{interaction.user.id}` execute command in guild `{interaction.guild.id}`"\
+                    f" but failed to check bot's permission in their guild."
+                )
+                return
+            else:
+                if check_perm['manage_messages'] is False:
+                    await interaction.edit_original_response(
+                        content=f"{interaction.user.mention}, bot has no permission manage_messages!"\
+                            " Please adjust permission and re-try."
+                    )
+                    await self.utils.log_to_channel(
+                        self.bot.log_channel_guild[str(interaction.guild.id)],
+                        f"{interaction.user.mention} / `{interaction.user.id}`, please check if Bot has permission manage_messages."
+                    )
+                    return
+            # End of check permission
+
+            delete_counter = 0
+            invalid_permission = 0
+            for channel in interaction.guild.channels:
+                if not type(channel) is discord.TextChannel:
+                    continue
+                try:
+                    async for message in channel.history(limit=100):
+                        if str(message.author.id) == user_id:
+                            try:
+                                await message.delete()
+                                delete_counter += 1
+                            except Exception as e:
+                                invalid_permission += 1
+                except Exception as e:
+                    invalid_permission += 1
+            invalid_msg = ""
+            if invalid_permission > 0:
+                invalid_msg = f" Failed {str(invalid_permission)} checks."
+            await interaction.edit_original_response(
+                content=f"{interaction.user.mention}, deleted {str(delete_counter)} message(s) from {str(user_id)}!{invalid_msg}"
+            )
+            await self.utils.log_to_channel(
+                self.bot.log_channel_guild[str(interaction.guild.id)],
+                f"{interaction.user.mention} / `{interaction.user.id}`, deleted {str(delete_counter)} message(s) from {str(user_id)}!."
+            )
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+
+
     ignore_group = app_commands.Group(name="ignore", guild_only=True, description="Ignore role or name.")
 
     @checks.has_permissions(ban_members=True)

@@ -16,6 +16,12 @@ def check_regex(given: str):
     return is_valid
 
 
+# https://stackoverflow.com/questions/312443/how-do-i-split-a-list-into-equally-sized-chunks
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
 # Cog class
 class Utils(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
@@ -648,6 +654,70 @@ class Utils(commands.Cog):
         except Exception:
             traceback.print_exc(file=sys.stdout)
         return False
+
+    # invite
+    async def insert_new_invite(
+        self, guild_id: str, guild_name: str, total_users: int, guild_owner_id: str,
+        by_user_id: str, code: str, member_id: str, member_created_at: int
+    ):
+        try:
+            await self.open_connection()
+            async with self.db_pool.acquire() as conn:
+                async with conn.cursor() as cur:
+                    sql = """
+                    INSERT INTO `invites_tracking` 
+                    (`guild_id`, `guild_name`, `total_users`, `guild_owner_id`, `invited_by_user_id`, `code`, `member_id`, `member_created_at`, `joined_date`)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """
+                    await cur.execute(sql, (
+                        guild_id, guild_name, total_users, guild_owner_id, by_user_id, code, member_id, member_created_at, int(time.time())
+                    ))
+                    await conn.commit()
+                    return True
+        except Exception:
+            traceback.print_exc(file=sys.stdout)
+        return False
+
+    async def delete_member_left(self, guild_id: str, member_id: str):
+        try:
+            await self.open_connection()
+            async with self.db_pool.acquire() as conn:
+                async with conn.cursor() as cur:
+                    sql = """
+                    DELETE FROM `invites_tracking` 
+                    WHERE `guild_id`=%s AND `member_id`=%s
+                    LIMIT 1
+                    """
+                    await cur.execute(sql, (
+                        guild_id, member_id
+                    ))
+                    await conn.commit()
+                    return True
+        except Exception:
+            traceback.print_exc(file=sys.stdout)
+        return False
+
+    async def invite_top_list(self, guild_id: str):
+        try:
+            await self.open_connection()
+            async with self.db_pool.acquire() as conn:
+                async with conn.cursor() as cur:
+                    sql = """
+                    SELECT COUNT(*) AS num_invites, invites_tracking.* FROM `invites_tracking` 
+                    WHERE `guild_id`=%s
+                    GROUP BY `guild_id`, `invited_by_user_id`
+                    ORDER BY `num_invites`
+                    DESC
+                    """
+                    await cur.execute(sql, (
+                        guild_id
+                    ))
+                    result = await cur.fetchall()
+                    if result:
+                        return result
+        except Exception:
+            traceback.print_exc(file=sys.stdout)
+        return []
 
     async def log_to_channel(self, channel_id: int, content: str) -> None:
         try:

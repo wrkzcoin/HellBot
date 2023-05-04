@@ -20,6 +20,7 @@ intents.members = True
 intents.presences = True
 intents.messages = True
 intents.message_content = True
+intents.invites = True
 
 bot = AutoShardedBot(
     command_prefix=commands.when_mentioned,

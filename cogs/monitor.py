@@ -186,7 +186,8 @@ class Events(commands.Cog):
                 got_role = None
                 for each in member.roles:
                     try:
-                        if each.id in self.bot.exceptional_role_id[str(member.guild.id)]:
+                        if str(member.guild.id) in self.bot.exceptional_role_id and \
+                            each.id in self.bot.exceptional_role_id[str(member.guild.id)]:
                             got_role = each
                             ignore = True
                             break
