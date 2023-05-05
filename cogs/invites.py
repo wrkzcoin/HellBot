@@ -187,12 +187,12 @@ class Invites(commands.Cog):
     @commands.Cog.listener()
     async def on_member_remove(self, member):
         if not member.bot:
+            guild = member.guild
             try:
                 invs_after = await guild.invites()
                 self.invites_dict[guild.id] = [tuple((invite.code, invite.uses)) for invite in invs_after]
             except Exception:
                 traceback.print_exc(file=sys.stdout)
-            guild = member.guild
             msg = f"{member.mention} / {member.name} left guild **{guild.name}**."
             if hasattr(guild, "system_channel") and guild.system_channel:
                 try:
