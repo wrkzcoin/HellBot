@@ -1,7 +1,8 @@
 import discord
 from discord.ext import commands, tasks
 from discord import app_commands
-from discord.app_commands import checks, MissingPermissions
+from discord.app_commands import checks, MissingPermissions, Choice
+import time
 
 import traceback, sys
 from datetime import datetime
@@ -73,26 +74,44 @@ class Invites(commands.Cog):
         name="leaderboard",
         description="Check invite leaderboard."
     )
+    @app_commands.describe(duration='Select duration')
+    @app_commands.choices(duration=[
+        Choice(name='1d', value=86400),
+        Choice(name='7d', value=604800),
+        Choice(name='14d', value=1209600),
+        Choice(name='30d', value=2592000),
+        Choice(name='all', value=-1),
+    ])
     async def command_invites_leaderboard(
         self,
         interaction: discord.Interaction,
+        duration: Choice[int]
     ) -> None:
         try:
             await interaction.response.send_message(f"{interaction.user.mention} invite leaderboard checking...")
-            get_list = await self.utils.invite_top_list(str(interaction.guild.id))
+            get_list = await self.utils.invite_top_list(str(interaction.guild.id), duration.value)
             if len(get_list) == 0:
                 await interaction.edit_original_response(
-                    content=f"{interaction.user.mention}, there's no record yet for this Guild **{interaction.guild.name}** or the recorded guest(s) left."
+                    content=f"{interaction.user.mention}, there's no record yet for this Guild "\
+                        f"**{interaction.guild.name}** within that duration or the recorded guest(s) left."
                 )
             else:
+                since_time = ""
+                if duration.value > 0:
+                    since_time = " since <t:{}:f>".format(int(time.time()) - duration.value)
                 embed = discord.Embed(
                     title="Invite Leaderboard",
-                    description="Top inviter(s) for {}!".format(interaction.guild.name),
+                    description="Top inviter(s) for {}{}!".format(interaction.guild.name, since_time),
                     timestamp=datetime.now()
                 )
                 list_comers = []
-                for i in get_list:
+                max_list = 50
+                for c, i in enumerate(get_list, start=1):
                     list_comers.append("<@{}> - {}".format(i['invited_by_user_id'], i['num_invites']))
+                    if c >= max_list:
+                        break
+                if len(get_list) > max_list:
+                    list_comers.append("and {} other(s)...".format(len(get_list) - max_list))
                 embed.add_field(
                     name="TOP INVITER(s)",
                     value="{}".format("\n".join(list_comers)),

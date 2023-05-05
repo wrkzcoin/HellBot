@@ -719,21 +719,27 @@ class Utils(commands.Cog):
             traceback.print_exc(file=sys.stdout)
         return False
 
-    async def invite_top_list(self, guild_id: str):
+    async def invite_top_list(self, guild_id: str, duration: int):
         try:
+            data_row = [guild_id]
+            extra_sql = ""
+            if duration > 0:
+                lap_duration = int(time.time()) - duration
+                extra_sql = """
+                AND `joined_date`> %s
+                """
+                data_row += [lap_duration]
             await self.open_connection()
             async with self.db_pool.acquire() as conn:
                 async with conn.cursor() as cur:
                     sql = """
                     SELECT COUNT(*) AS num_invites, invites_tracking.* FROM `invites_tracking` 
-                    WHERE `guild_id`=%s
+                    WHERE `guild_id`=%s """ + extra_sql + """
                     GROUP BY `guild_id`, `invited_by_user_id`
                     ORDER BY `num_invites`
                     DESC
                     """
-                    await cur.execute(sql, (
-                        guild_id
-                    ))
+                    await cur.execute(sql, tuple(data_row))
                     result = await cur.fetchall()
                     if result:
                         return result
