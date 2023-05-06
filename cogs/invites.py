@@ -221,8 +221,6 @@ class Invites(commands.Cog):
             for invite in invs_after:
                 try:
                     for invite_dict in invs_before:
-                        if done is True:
-                            break
                         if invite_dict[0] == invite.code and int(invite.uses) > invite_dict[1]:
                             done = True
                             # channel = guild.system_channel
@@ -242,6 +240,8 @@ class Invites(commands.Cog):
                             break
                 except Exception:
                     traceback.print_exc(file=sys.stdout)
+                if done is True:
+                    break
         else:
             await self.utils.log_to_channel(
                 self.bot.config['discord']['log_channel'],
