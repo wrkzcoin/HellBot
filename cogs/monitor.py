@@ -19,6 +19,73 @@ class Events(commands.Cog):
         self.utils = Utils(bot)
 
     @commands.Cog.listener()
+    async def on_raw_message_edit(self, payload: discord.RawMessageUpdateEvent):
+        if payload.cached_message is None:
+            return
+        if payload.cached_message.author.bot is True:
+            return
+        if not hasattr(payload.cached_message, "guild"):
+            return
+
+        try:
+            embed = discord.Embed(
+                description=f"Messaged edited <#{payload.channel_id}>\n\n"\
+                f"{payload.cached_message.clean_content[:1000]}"
+            )
+            embed.add_field(
+                name="New Content",
+                value=payload.data['content'][:1000]
+            )
+            embed.set_footer(
+                text=f"Author: {payload.cached_message.author} | ID: {payload.cached_message.author.id}",
+                icon_url=str(payload.cached_message.author.display_avatar)
+            )
+            # Check if there is a log channel
+            if str(payload.cached_message.guild.id) not in self.bot.log_channel_guild or \
+                self.bot.log_channel_guild[str(payload.cached_message.guild.id)] is None:
+                return
+            else:
+                # log channel
+                await self.utils.log_to_channel(
+                    self.bot.log_channel_guild[str(payload.cached_message.guild.id)],
+                    content=None,
+                    embed=embed
+                )
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+
+    @commands.Cog.listener()
+    async def on_raw_message_delete(self, payload: discord.RawMessageDeleteEvent):
+        if payload.cached_message is None:
+            return
+        if payload.cached_message.author.bot is True:
+            return
+        if not hasattr(payload.cached_message, "guild"):
+            return
+        try:
+            embed = discord.Embed(
+                description=f"Messaged deleted <#{payload.channel_id}>\n\n"\
+                f"{payload.cached_message.clean_content[:1000]}"
+            )
+            embed.set_footer(
+                text=f"Author: {payload.cached_message.author} | ID: {payload.cached_message.author.id}",
+                icon_url=str(payload.cached_message.author.display_avatar)
+            )
+            # Check if there is a log channel
+            if str(payload.cached_message.guild.id) not in self.bot.log_channel_guild or \
+                self.bot.log_channel_guild[str(payload.cached_message.guild.id)] is None:
+                return
+            else:
+                # log channel
+                await self.utils.log_to_channel(
+                    self.bot.log_channel_guild[str(payload.cached_message.guild.id)],
+                    content=None,
+                    embed=embed
+                )
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
+
+    @commands.Cog.listener()
     async def on_message(self, message):
         # should ignore webhook message
         if message is None:

@@ -747,12 +747,12 @@ class Utils(commands.Cog):
             traceback.print_exc(file=sys.stdout)
         return []
 
-    async def log_to_channel(self, channel_id: int, content: str) -> None:
+    async def log_to_channel(self, channel_id: int, content: str, embed=None) -> None:
         try:
             channel = self.bot.get_channel(channel_id)
             if channel:
                 try:
-                    await channel.send(content)
+                    await channel.send(content=content, embed=embed)
                 except Exception as e:
                     traceback.print_exc(file=sys.stdout)
         except Exception as e:
